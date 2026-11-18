@@ -1,8 +1,43 @@
 """Application configuration loaded from environment variables."""
 
+from pathlib import Path
 from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_project_root() -> Path:
+    """Resolve the root directory that owns ./data both natively and in Docker.
+
+    Natively, this file lives at <repo>/backend/app/config.py so parents[1] is
+    <repo>/backend and the repo root is parents[2] (verified by docker-compose.yml).
+    Inside the backend Docker container, WORKDIR is /app with ./data mounted at
+    /app/data, so parents[1] is /app.
+    """
+    app_parent = Path(__file__).resolve().parents[1]
+    if app_parent.name == "backend" and (app_parent.parent / "docker-compose.yml").exists():
+        return app_parent.parent
+    return app_parent
+
+
+def resolve_database_url(database_url: str) -> str:
+    """Anchor relative sqlite:/// URLs to the shared project root directory."""
+    prefix = "sqlite:///"
+    if not database_url.startswith(prefix):
+        return database_url
+
+    raw_path = database_url[len(prefix) :]
+    if raw_path in ("", ":memory:") or raw_path.startswith("file:"):
+        return database_url
+
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        return f"{prefix}{candidate.as_posix()}"
+
+    resolved = (get_project_root() / candidate).resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    return f"{prefix}{resolved.as_posix()}"
 
 
 class Settings(BaseSettings):
@@ -21,6 +56,7 @@ class Settings(BaseSettings):
     llm_model: str = "gemini-2.5-flash"
     database_url: str = "sqlite:///./data/groundwork.db"
     cors_origins: str = "http://localhost:5173"
+    seed_on_start: bool = False
 
     @property
     def llm_configured(self) -> bool:
@@ -32,6 +68,11 @@ class Settings(BaseSettings):
         """Return only the URL scheme for the database connection string."""
         parsed = urlparse(self.database_url)
         return parsed.scheme or "unknown"
+
+    @property
+    def resolved_database_url(self) -> str:
+        """Return the normalized database URL anchored to the shared data directory."""
+        return resolve_database_url(self.database_url)
 
     @property
     def cors_origin_list(self) -> list[str]:

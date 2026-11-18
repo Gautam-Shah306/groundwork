@@ -14,6 +14,10 @@ export {
   type StatusPillVariant,
 } from "./StatusPill";
 export {
+  SyntheticDataNotice,
+  type SyntheticDataNoticeProps,
+} from "./SyntheticDataNotice";
+export {
   EVIDENCE_TYPES,
   TypeLabel,
   type EvidenceType,

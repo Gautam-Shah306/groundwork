@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ChevronRight, HelpCircle, Menu } from "lucide-react";
+import { useEngagement } from "../../context/EngagementContext";
 import { findNavItemByPath } from "../../lib/navigation";
 import { SystemStatus } from "./SystemStatus";
 
@@ -10,6 +11,7 @@ export interface TopBarProps {
 
 export function TopBar({ onToggleMobileNav }: TopBarProps) {
   const { pathname } = useLocation();
+  const { activeEngagement } = useEngagement();
   const [helpOpen, setHelpOpen] = useState(false);
 
   const activeNav = findNavItemByPath(pathname);
@@ -18,7 +20,12 @@ export function TopBar({ onToggleMobileNav }: TopBarProps) {
   const crumbs = isDevRoute
     ? ["Groundwork", "Developer", "Components"]
     : activeNav
-      ? ["Groundwork", activeNav.groupLabel, activeNav.label]
+      ? [
+          "Groundwork",
+          ...(activeEngagement ? [activeEngagement.name] : []),
+          activeNav.groupLabel,
+          activeNav.label,
+        ]
       : ["Groundwork", "Workspace"];
 
   return (
@@ -36,25 +43,25 @@ export function TopBar({ onToggleMobileNav }: TopBarProps) {
         )}
 
         <nav aria-label="Breadcrumb" className="min-w-0">
-          <ol className="flex items-center gap-1.5 text-[12px]">
+          <ol className="flex flex-wrap items-center gap-1.5 text-[12px]">
             {crumbs.map((crumb, index) => {
               const isLast = index === crumbs.length - 1;
               return (
-                <li key={`${crumb}-${index}`} className="flex items-center gap-1.5">
+                <li key={`${crumb}-${index}`} className="flex items-center gap-1.5 min-w-0">
                   {index > 0 && (
                     <ChevronRight
                       size={14}
                       strokeWidth={1.75}
                       aria-hidden="true"
-                      className="text-muted/70"
+                      className="shrink-0 text-muted/70"
                     />
                   )}
                   <span
                     aria-current={isLast ? "page" : undefined}
                     className={
                       isLast
-                        ? "font-semibold text-ink"
-                        : "font-medium text-muted"
+                        ? "truncate font-semibold text-ink"
+                        : "truncate font-medium text-muted"
                     }
                   >
                     {crumb}
@@ -66,7 +73,7 @@ export function TopBar({ onToggleMobileNav }: TopBarProps) {
         </nav>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <SystemStatus />
 
         <div className="relative">

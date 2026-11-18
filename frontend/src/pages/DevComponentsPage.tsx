@@ -8,6 +8,7 @@ import {
   Eyebrow,
   KpiTile,
   StatusPill,
+  SyntheticDataNotice,
   TypeLabel,
   type DataTableColumn,
   type StatusPillVariant,
@@ -205,6 +206,13 @@ export function DevComponentsPage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      <Card
+        title="Synthetic data notice"
+        description="Required banner marking synthetic demonstration engagements and simulated outputs (R7)."
+      >
+        <SyntheticDataNotice />
       </Card>
 
       <Card

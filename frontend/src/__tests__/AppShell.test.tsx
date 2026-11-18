@@ -4,26 +4,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../App";
 import { NAV_ITEMS } from "../lib/navigation";
 
-function mockHealthyFetch() {
-  return vi.spyOn(globalThis, "fetch").mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        status: "ok",
-        version: "0.1.0",
-        llm_configured: false,
-        database_url_scheme: "sqlite",
-      }),
-      {
+function mockDefaultApi() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/health")) {
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: false,
+          database_url_scheme: "sqlite",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (url.includes("/api/engagements")) {
+      return new Response(JSON.stringify([]), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
-    )
-  );
+      });
+    }
+    return new Response(JSON.stringify({ detail: "Not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
 }
 
 describe("Application shell, navigation, and health status", () => {
   beforeEach(() => {
-    mockHealthyFetch();
+    window.localStorage.clear();
+    mockDefaultApi();
   });
 
   afterEach(() => {
@@ -67,7 +78,7 @@ describe("Application shell, navigation, and health status", () => {
     expect(overviewLink).not.toHaveAttribute("aria-current");
   });
 
-  it("each of the six routes renders its title and an EmptyState", () => {
+  it("each of the six routes renders its title and an EmptyState", async () => {
     for (const item of NAV_ITEMS) {
       const { unmount } = render(
         <MemoryRouter initialEntries={[item.path]}>
@@ -75,10 +86,12 @@ describe("Application shell, navigation, and health status", () => {
         </MemoryRouter>
       );
 
-      expect(
-        screen.getByRole("heading", { level: 1, name: item.label })
-      ).toBeInTheDocument();
-      expect(screen.getByText(item.emptyTitle)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { level: 1, name: item.label })
+        ).toBeInTheDocument();
+        expect(screen.getByText(item.emptyTitle)).toBeInTheDocument();
+      });
       expect(screen.getByText(item.emptyDescription)).toBeInTheDocument();
 
       unmount();
@@ -117,9 +130,16 @@ describe("Application shell, navigation, and health status", () => {
 
   it("status shows unavailable when the health call fails", async () => {
     vi.restoreAllMocks();
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(
-      new Error("Connection refused")
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health")) {
+        throw new Error("Connection refused");
+      }
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
 
     render(
       <MemoryRouter initialEntries={["/"]}>

@@ -22,6 +22,11 @@ company ("Kora Living"). All data is synthetic and must be labelled as such.
   otherwise run that part in Docker. Do not install system software.
 - PowerShell command hygiene: no double quotes inside native-command arguments,
   and use PowerShell-safe syntax (no `&&` chaining).
+- Concrete frontend command pattern on this machine (when Node is not installed
+  natively, with Compose running):
+  - `docker compose exec -T frontend npm run test`
+  - `docker compose exec -T frontend npx tsc --noEmit`
+  - `docker compose exec -T frontend npm run build`
 
 ## Non-negotiable rules
 - **R1.** The LLM NEVER calculates, estimates or invents business metrics. All numbers

@@ -1,8 +1,11 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { EmptyState, Eyebrow } from "./components/ui";
+import { EngagementProvider } from "./context/EngagementContext";
 import { NAV_ITEMS } from "./lib/navigation";
 import { DevComponentsPage } from "./pages/DevComponentsPage";
+import { EngagementsPage } from "./pages/EngagementsPage";
+import { OverviewPage } from "./pages/OverviewPage";
 import { StagePlaceholderPage } from "./pages/StagePlaceholderPage";
 
 export interface AppRoutesProps {
@@ -27,20 +30,30 @@ function NotFoundPage() {
 }
 
 export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
+  const placeholderItems = NAV_ITEMS.filter(
+    (item) => item.id !== "overview" && item.id !== "engagements"
+  );
+
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        {NAV_ITEMS.map((item) => (
-          <Route
-            key={item.id}
-            path={item.path}
-            element={<StagePlaceholderPage item={item} />}
-          />
-        ))}
-        {isDev && <Route path="/dev/components" element={<DevComponentsPage />} />}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+    <EngagementProvider>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/engagements" element={<EngagementsPage />} />
+          {placeholderItems.map((item) => (
+            <Route
+              key={item.id}
+              path={item.path}
+              element={<StagePlaceholderPage item={item} />}
+            />
+          ))}
+          {isDev && (
+            <Route path="/dev/components" element={<DevComponentsPage />} />
+          )}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </EngagementProvider>
   );
 }
 

@@ -49,7 +49,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
     eyebrow: "Workspace",
     emptyTitle: "No engagements created yet",
     emptyDescription:
-      "Client engagements and their synthetic demonstration datasets will be listed here once seeded in the next milestone.",
+      "Client engagements and their synthetic demonstration datasets will be listed here once created below or seeded via the backend CLI.",
     icon: Briefcase,
   },
   {
