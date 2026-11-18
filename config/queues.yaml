@@ -1,0 +1,29 @@
+queues:
+  - Order support
+  - Returns and refunds
+  - Payments
+  - General
+  - Escalations
+
+categories:
+  - id: order_tracking
+    display_name: Order tracking
+    queue: Order support
+  - id: returns_refunds
+    display_name: Returns and refunds
+    queue: Returns and refunds
+  - id: payment_issues
+    display_name: Payment issues
+    queue: Payments
+  - id: product_questions
+    display_name: Product questions
+    queue: General
+  - id: address_change
+    display_name: Address change
+    queue: Order support
+  - id: damaged_item
+    display_name: Damaged item
+    queue: Returns and refunds
+  - id: account_login
+    display_name: Account and login
+    queue: General

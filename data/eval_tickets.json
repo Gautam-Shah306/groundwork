@@ -1,0 +1,2128 @@
+[
+  {
+    "id": "EV-001",
+    "subject": "Mera order ORD-81054 abhi tak nahi aaya",
+    "body": "Hi team, maine 2 Oct ko Fluted Glass Tumbler Set order kiya tha Bengaluru ke liye (ORD-81054). Tracking 4 din se ek hi jagah atka hua hai, please jaldi check karo kab deliver hoga.",
+    "channel": "email",
+    "language": "hinglish",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-002",
+    "subject": "Delivery bahut late ho gayi hai ORD-81073",
+    "body": "Hello, ORD-81073 (Stoneware Dinner Set) kal function ke liye chahiye tha aur already 5 din delay ho chuka hai. Bahut urgent hai bhai, courier se baat karke aaj deliver karwao.",
+    "channel": "chat",
+    "language": "hinglish",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "explicit_urgency"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-003",
+    "subject": "Refund abhi tak bank mein nahi aaya (ORD-81084)",
+    "body": "Namaste, mera Cotton Throw Blanket (ORD-81084) return pickup hoke warehouse pahunch gaya tha 11 Oct ko. Abhi tak refund credit nahi hua hai, 8 din se zyada ho gaye.",
+    "channel": "web_form",
+    "language": "hinglish",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-004",
+    "subject": "Return pickup kab hoga ORD-81102 ka?",
+    "body": "Hi, Handwoven Jute Rug (ORD-81102) ka size room mein fit nahi ho raha. Box bilkul packed hai, return pickup schedule kar dijiye Mumbai mein.",
+    "channel": "whatsapp",
+    "language": "hinglish",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-005",
+    "subject": "UPI se do baar paise kat gaye ORD-81114",
+    "body": "Hello support, maine Fluted Glass Tumbler Set ke liye payment kiya (ORD-81114) aur mere bank se do baar amount deduct ho gaya hai. Please extra payment jaldi reverse karwaiye.",
+    "channel": "email",
+    "language": "hinglish",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-006",
+    "subject": "Paise kat gaye par order confirm nahi hua",
+    "body": "Hi, aaj Ceramic Pour-Over Carafe order kar raha tha Kochi ke liye. UPI se paise cut ho gaye lekin website pe error aa gaya aur koi order ID nahi mili.",
+    "channel": "chat",
+    "language": "hinglish",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-007",
+    "subject": "Toota hua Stoneware Dinner Set mila hai ORD-81152",
+    "body": "Hi Kora Living, aaj subah ORD-81152 deliver hua aur box khola toh Stoneware Dinner Set poora crack nikla. Maine photos le li hain, replacement bhej dijiye please.",
+    "channel": "web_form",
+    "language": "hinglish",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-008",
+    "subject": "Galat product bhej diya ORD-81167 mein",
+    "body": "Hello, maine Acacia Chopping Board mangwaya tha (ORD-81167) par parcel mein koi aur item aa gaya hai Bengaluru mein. Please sahi item bhejo aur yeh wapas le jao.",
+    "channel": "whatsapp",
+    "language": "hinglish",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-009",
+    "subject": "Address change karna hai dispatch se pehle (ORD-81195)",
+    "body": "Hi, abhi just ORD-81195 (Cotton Throw Blanket) place kiya hai aur galat flat number dal gaya. Urgent hai, dispatch hone se pehle address update kar do please.",
+    "channel": "email",
+    "language": "hinglish",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-010",
+    "subject": "Account login nahi ho raha, lock ho gaya",
+    "body": "Hello team, password reset karne ke baad bhi mera account locked dikha raha hai. OTP bhi nahi aa raha Gurugram mein, login fix kar dijiye.",
+    "channel": "chat",
+    "language": "hinglish",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-011",
+    "subject": "Terracotta Table Lamp ka exact size aur material bataiye",
+    "body": "Hi, Terracotta Table Lamp wash kar sakte hain kya aur kya yeh Pune mein stock mein hai? Lene se pehle confirm karna tha.",
+    "channel": "web_form",
+    "language": "hinglish",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-012",
+    "subject": "Parcel late aur address bhi update karna tha (ORD-81244)",
+    "body": "Hi, mera Acacia Chopping Board (ORD-81244) already 4 din late chal raha hai aur ab main Gurugram se bahar ja raha hoon toh address change ho sakta hai kya?",
+    "channel": "whatsapp",
+    "language": "hinglish",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "address_change"
+  },
+  {
+    "id": "EV-013",
+    "subject": "Double charge hua hai, warna bank dispute karunga (ORD-81253)",
+    "body": "Maine 21 Oct ko Cotton Throw Blanket (ORD-81253) liya aur card do baar charge ho gaya. Aaj solve nahi hua toh bank mein chargeback raise kar dunga.",
+    "channel": "email",
+    "language": "hinglish",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "legal_or_chargeback_threat",
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-014",
+    "subject": "Damaged item return kiya par refund nahi aaya (ORD-81269)",
+    "body": "Mera Rattan Accent Basket (ORD-81269) damaged aaya tha, return pickup bhi ho gaya par refund abhi tak overdue hai. Please status batao.",
+    "channel": "chat",
+    "language": "hinglish",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "item_damaged_or_defective",
+      "refund_overdue"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "damaged_item"
+  },
+  {
+    "id": "EV-015",
+    "subject": "Cracked Ceramic Pour-Over Carafe — want full refund instead of exchange (ORD-81295)",
+    "body": "My Ceramic Pour-Over Carafe from ORD-81295 arrived cracked along the handle in Hyderabad today. Rather than waiting for a replacement, I would prefer to return it for a full refund to my original card.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "returns_refunds"
+  },
+  {
+    "id": "EV-016",
+    "subject": "Delayed parcel ORD-81307 — need delivery redirected",
+    "body": "Order ORD-81307 (Cotton Throw Blanket) is now four days overdue to Gurugram, and because it missed the delivery window I will be away from home. Can you trace the parcel and redirect it to my office?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "address_change"
+  },
+  {
+    "id": "EV-017",
+    "subject": "Returned Terracotta Table Lamp and charged twice? (ORD-81321)",
+    "body": "I returned my Terracotta Table Lamp (ORD-81321) on 16 Oct and am still waiting on the overdue refund, plus my bank statement looks like the order was billed twice. Please sort out both.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "payment_charged_twice",
+      "refund_overdue"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "payment_issues"
+  },
+  {
+    "id": "EV-018",
+    "subject": "Payment deducted on 25 Oct — did my Rattan Accent Basket ship?",
+    "body": "Money was debited from my UPI account for the Rattan Accent Basket, yet I cannot see any order number or tracking update in my dashboard. Did the order go through or fail?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "order_tracking"
+  },
+  {
+    "id": "EV-019",
+    "subject": "Locked out while trying to track ORD-81358",
+    "body": "My Kora Living account is locked and password reset isn't working, which means I cannot check where my delayed Enamel Kettle (ORD-81358) is. Please unlock my login and share tracking.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked",
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "order_tracking"
+  },
+  {
+    "id": "EV-020",
+    "subject": "Scratched Cotton Throw Blanket — is this normal finish? (ORD-81369)",
+    "body": "I just unboxed the Cotton Throw Blanket (ORD-81369) in Pune and there is a long dent and rough crack on one side. Is this handmade variation or a defective piece I should replace?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "product_questions"
+  },
+  {
+    "id": "EV-021",
+    "subject": "Need to fix address on ORD-81380 before courier ships",
+    "body": "I ordered the Brass Floor Lamp (ORD-81380) for a birthday in Kochi and put the wrong street name. Tracking hasn't updated yet, so can you confirm dispatch status and edit the address urgently?",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "order_tracking"
+  },
+  {
+    "id": "EV-022",
+    "subject": "Wrong colour received — requesting return pickup (ORD-81404)",
+    "body": "The Block-Print Cushion Cover Set delivered under ORD-81404 on 21 Oct is the wrong item compared to my invoice. Please initiate a return pickup and confirm when my refund will process.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "damaged_item"
+  },
+  {
+    "id": "EV-023",
+    "subject": "Locked out after duplicate card charge (ORD-81418)",
+    "body": "My card was charged twice for ORD-81418 (Acacia Chopping Board), and when I tried signing back in to check the invoice my account locked out. I need the double charge reversed first.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "account_locked",
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "account_login"
+  },
+  {
+    "id": "EV-024",
+    "subject": "If Rattan Accent Basket doesn't match my decor, can I return it?",
+    "body": "Before ordering the Rattan Accent Basket to Kochi, could you confirm the exact fabric shade and whether it qualifies for your seven-day return window if it clashes with my sofa?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": true,
+    "secondary_category": "returns_refunds"
+  },
+  {
+    "id": "EV-025",
+    "subject": "Cancel and refund late shipment ORD-81454",
+    "body": "My Acacia Chopping Board (ORD-81454) has been stuck in transit to Indore for five days past the expected delivery date. At this point I need it cancelled or returned once it arrives because the event passed.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "returns_refunds"
+  },
+  {
+    "id": "EV-026",
+    "subject": "Box arrived crushed and missing second Terracotta Table Lamp (ORD-81481)",
+    "body": "Order ORD-81481 finally reached Jaipur after a four-day delay, and the outer carton was crushed with one broken Terracotta Table Lamp inside and the second unit missing.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "order_tracking"
+  },
+  {
+    "id": "EV-027",
+    "subject": "Can't log in to track my overdue refund (ORD-81494)",
+    "body": "My refund for the returned Ceramic Pour-Over Carafe (ORD-81494) is past seven business days, and my account is also locked so I cannot check the return portal status.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "account_locked",
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "account_login"
+  },
+  {
+    "id": "EV-028",
+    "subject": "Change address on ORD-81515 and check bulb type",
+    "body": "Please urgently update the shipping address on ORD-81515 (Rattan Accent Basket) to my new flat in Kochi before dispatch, and also let me know which LED bulb wattage fits it.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "product_questions"
+  },
+  {
+    "id": "EV-029",
+    "subject": "Failed checkout charge vs return credit (ORD-81542)",
+    "body": "I had a failed payment deducted on 28 Oct for the Stoneware Dinner Set and separately returned an earlier item (ORD-81542). Neither amount has returned to my bank yet.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed",
+      "refund_overdue"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "returns_refunds"
+  },
+  {
+    "id": "EV-030",
+    "subject": "Will Matte Ceramic Planter reach Pune by Saturday if ordered today?",
+    "body": "I want to buy the Matte Ceramic Planter for a Saturday dinner in Pune — can you confirm the lamp dimensions and whether standard shipping can realistically deliver urgently in time?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": true,
+    "secondary_category": "order_tracking"
+  },
+  {
+    "id": "EV-031",
+    "subject": "Courier says parcel ORD-81577 damaged in transit",
+    "body": "Tracking for my Block-Print Cushion Cover Set (ORD-81577) to Chennai has been delayed over four days and now shows a courier exception saying the carton was damaged at the sorting hub.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": true,
+    "secondary_category": "damaged_item"
+  },
+  {
+    "id": "EV-032",
+    "subject": "Order ORD-81584",
+    "body": "Order ORD-81584 is five days late. Where is it?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-033",
+    "subject": "Tracking ORD-81607",
+    "body": "Need ORD-81607 delivered urgently by tomorrow morning please.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-034",
+    "subject": "Return ORD-81614",
+    "body": "Want to return Block-Print Cushion Cover Set from order ORD-81614.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-035",
+    "subject": "Refund ORD-81622",
+    "body": "Refund for ORD-81622 is overdue two weeks now.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-036",
+    "subject": "Double charge",
+    "body": "Charged twice for order ORD-81636. Please reverse immediately.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-037",
+    "subject": "Payment failed",
+    "body": "UPI deducted on 25 Oct but order failed.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-038",
+    "subject": "Broken item",
+    "body": "Brass Floor Lamp in ORD-81671 arrived broken today.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-039",
+    "subject": "Wrong item",
+    "body": "Received wrong product in order ORD-81689.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-040",
+    "subject": "Fix address",
+    "body": "Urgent: change shipping address on ORD-81700 before dispatch.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-041",
+    "subject": "Pin code typo",
+    "body": "Wrong pin code on ORD-81712, please update.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-042",
+    "subject": "Account locked",
+    "body": "My Kora Living account is locked, cannot login.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-043",
+    "subject": "No reset mail",
+    "body": "Password reset email not coming, still locked out.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-044",
+    "subject": "Size check",
+    "body": "What are the dimensions of Enamel Kettle?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-045",
+    "subject": "Washable?",
+    "body": "Is the Cotton Throw Blanket machine washable?",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-046",
+    "subject": "Where is my Walnut Serving Tray order ORD-81821?",
+    "body": "Hi team, I ordered the Walnut Serving Tray under ORD-81821 on 11 Oct for delivery to Indore. The courier tracking page has not moved for four days now and still shows sitting at the hub. Could you check when it will actually arrive?",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-047",
+    "subject": "Urgent delivery check for ORD-81839",
+    "body": "Hello, my Acacia Chopping Board (ORD-81839) was supposed to reach Ahmedabad by 24 Sep and is already five days overdue. I need this urgently for a housewarming dinner tomorrow evening. Please escalate with the courier right away.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "explicit_urgency"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-048",
+    "subject": "Tracking link stuck on manifested — ORD-81849",
+    "body": "Good afternoon, I placed order ORD-81849 on 11 Oct for a Cotton Throw Blanket. The tracking link has been frozen on shipment manifested since dispatch, which is over four days late now. Can someone share a real update?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-049",
+    "subject": "No tracking update yet for ORD-81871",
+    "body": "Hi Kora Living support, I bought the Block-Print Cushion Cover Set yesterday (ORD-81871) and haven't received an AWB number or tracking link yet. Could you let me know when it is scheduled to ship to Pune?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-050",
+    "subject": "Need Ceramic Pour-Over Carafe before Friday — order ORD-81896",
+    "body": "Hi, I ordered the Ceramic Pour-Over Carafe (ORD-81896) and I am travelling out of Ahmedabad on Friday morning. Can you confirm whether the parcel will be delivered before then? It is quite time-sensitive.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-051",
+    "subject": "Courier marked attempted delivery without calling (ORD-81909)",
+    "body": "My tracking for ORD-81909 (Cotton Throw Blanket) suddenly says delivery attempted in Gurugram, even though I was home all day and nobody rang. This parcel is already four days past the estimated date. Please arrange redelivery.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-052",
+    "subject": "Partial shipment received for ORD-81931",
+    "body": "Hello, only part of my order ORD-81931 arrived in Ahmedabad on 19 Sep, and the Enamel Kettle is still missing from the tracking portal. Can you confirm if it was split into a second box?",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-053",
+    "subject": "Over a week late and no response — ORD-81955",
+    "body": "I ordered the Terracotta Table Lamp (ORD-81955) on 28 Oct and it is still stuck in transit to Jaipur more than a week past the promised window. If I do not get a confirmed delivery date today I am filing a chargeback with my bank.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "legal_or_chargeback_threat"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-054",
+    "subject": "Gift order ORD-81982 running late",
+    "body": "Hi support, order ORD-81982 for the Matte Ceramic Planter was meant to be an anniversary gift in Bengaluru. It is now four days past the delivery estimate and we need it urgently before the weekend.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "explicit_urgency"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-055",
+    "subject": "Where is my Terracotta Table Lamp order ORD-82007?",
+    "body": "Hi team, I ordered the Terracotta Table Lamp under ORD-82007 on 24 Sep for delivery to Ahmedabad. The courier tracking page has not moved for four days now and still shows sitting at the hub. Could you check when it will actually arrive? Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-056",
+    "subject": "Urgent delivery check for ORD-82015",
+    "body": "Hello, my Cotton Throw Blanket (ORD-82015) was supposed to reach Kochi by 21 Oct and is already five days overdue. I need this urgently for a housewarming dinner tomorrow evening. Please escalate with the courier right away. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days",
+      "explicit_urgency"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-057",
+    "subject": "Tracking link stuck on manifested — ORD-82042",
+    "body": "Good afternoon, I placed order ORD-82042 on 16 Oct for a Brass Floor Lamp. The tracking link has been frozen on shipment manifested since dispatch, which is over four days late now. Can someone share a real update? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-058",
+    "subject": "No tracking update yet for ORD-82061",
+    "body": "Hi Kora Living support, I bought the Walnut Serving Tray yesterday (ORD-82061) and haven't received an AWB number or tracking link yet. Could you let me know when it is scheduled to ship to Bengaluru? Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-059",
+    "subject": "Need Terracotta Table Lamp before Friday — order ORD-82086",
+    "body": "Hi, I ordered the Terracotta Table Lamp (ORD-82086) and I am travelling out of Chennai on Friday morning. Can you confirm whether the parcel will be delivered before then? It is quite time-sensitive. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-060",
+    "subject": "Courier marked attempted delivery without calling (ORD-82106)",
+    "body": "My tracking for ORD-82106 (Acacia Chopping Board) suddenly says delivery attempted in Indore, even though I was home all day and nobody rang. This parcel is already four days past the estimated date. Please arrange redelivery. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "order_tracking",
+    "true_signals": [
+      "delivery_delayed_over_3_days"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-061",
+    "subject": "Return pickup request for Ceramic Pour-Over Carafe (ORD-82117)",
+    "body": "Hi, I received my Ceramic Pour-Over Carafe from order ORD-82117 on 25 Oct in Bengaluru. The colour looks darker than expected in my living room, so I would like to return it unused in the original box. How do I schedule pickup?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-062",
+    "subject": "Refund still not credited after return — ORD-82144",
+    "body": "Hello team, the courier picked up my returned Acacia Chopping Board (ORD-82144) two weeks ago and tracking confirms it reached your warehouse. It has been over ten business days and the refund is still overdue on my card.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-063",
+    "subject": "Exchange size for Rattan Accent Basket on ORD-82160",
+    "body": "Good morning, I bought the Rattan Accent Basket (ORD-82160) delivered on 11 Oct and would like to return it for a different size because it doesn't fit our dining table. Tags and packaging are completely intact.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-064",
+    "subject": "Reverse pickup keeps getting rescheduled (ORD-82187)",
+    "body": "I requested a return for the Ceramic Pour-Over Carafe (ORD-82187) in Gurugram on 24 Sep, and the courier has cancelled pickup three times. I am leaving town urgently in two days and need this collected before I go.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-065",
+    "subject": "Still waiting on COD refund for ORD-82210",
+    "body": "Hi, I returned my COD order ORD-82210 (Block-Print Cushion Cover Set) on 7 Oct and submitted my UPI details through the payout link. More than nine business days have passed and the refund still hasn't arrived.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-066",
+    "subject": "Return window question for ORD-82221",
+    "body": "Hello, my Handwoven Jute Rug from order ORD-82221 was delivered to Kolkata three days ago. It is unopened and I would like to initiate a return back to my original payment method.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-067",
+    "subject": "Overdue refund — escalating to consumer forum (ORD-82239)",
+    "body": "My returned Terracotta Table Lamp (ORD-82239) was inspected at your warehouse weeks ago and I still have no refund in my bank account. If this overdue refund is not processed immediately, I will lodge a consumer court complaint.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "legal_or_chargeback_threat",
+      "refund_overdue"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-068",
+    "subject": "Wrong refund amount received for ORD-82247",
+    "body": "Hi support, I returned two units of the Acacia Chopping Board under ORD-82247 on 25 Oct, yet only a partial refund came through and the remaining balance is now overdue past seven business days. Please check.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-069",
+    "subject": "Return pickup request for Walnut Serving Tray (ORD-82256)",
+    "body": "Hi, I received my Walnut Serving Tray from order ORD-82256 on 16 Oct in Gurugram. The colour looks darker than expected in my living room, so I would like to return it unused in the original box. How do I schedule pickup? Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-070",
+    "subject": "Refund still not credited after return — ORD-82267",
+    "body": "Hello team, the courier picked up my returned Ceramic Pour-Over Carafe (ORD-82267) two weeks ago and tracking confirms it reached your warehouse. It has been over ten business days and the refund is still overdue on my card. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-071",
+    "subject": "Exchange size for Rattan Accent Basket on ORD-82276",
+    "body": "Good morning, I bought the Rattan Accent Basket (ORD-82276) delivered on 19 Sep and would like to return it for a different size because it doesn't fit our dining table. Tags and packaging are completely intact. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-072",
+    "subject": "Reverse pickup keeps getting rescheduled (ORD-82284)",
+    "body": "I requested a return for the Matte Ceramic Planter (ORD-82284) in Jaipur on 19 Sep, and the courier has cancelled pickup three times. I am leaving town urgently in two days and need this collected before I go. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-073",
+    "subject": "Still waiting on COD refund for ORD-82292",
+    "body": "Hi, I returned my COD order ORD-82292 (Walnut Serving Tray) on 14 Sep and submitted my UPI details through the payout link. More than nine business days have passed and the refund still hasn't arrived. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "refund_overdue"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-074",
+    "subject": "Return window question for ORD-82312",
+    "body": "Hello, my Stoneware Dinner Set from order ORD-82312 was delivered to Kochi three days ago. It is unopened and I would like to initiate a return back to my original payment method. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-075",
+    "subject": "Overdue refund — escalating to consumer forum (ORD-82335)",
+    "body": "My returned Block-Print Cushion Cover Set (ORD-82335) was inspected at your warehouse weeks ago and I still have no refund in my bank account. If this overdue refund is not processed immediately, I will lodge a consumer court complaint. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "returns_refunds",
+    "true_signals": [
+      "legal_or_chargeback_threat",
+      "refund_overdue"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-076",
+    "subject": "Charged twice on my card for ORD-82349",
+    "body": "Hi, I just placed order ORD-82349 for the Acacia Chopping Board and my credit card statement shows two identical deductions for the exact same order. Please reverse the duplicate charge as soon as possible.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-077",
+    "subject": "UPI money deducted but order failed — Matte Ceramic Planter",
+    "body": "Hello, I tried buying the Matte Ceramic Planter on 16 Oct via UPI. The amount was debited from my bank account immediately, but the Kora Living checkout page crashed and no order confirmation appeared in my account.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-078",
+    "subject": "Duplicate billing alert for ORD-82386",
+    "body": "Good evening, I checked my bank app after purchasing the Linen Duvet Cover (ORD-82386) and noticed I was billed twice within one minute. Can your payments team confirm the extra charge will be reversed?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-079",
+    "subject": "Payment failed yet funds debited on 16 Oct",
+    "body": "Hi team, during checkout for the Rattan Accent Basket to Mumbai, net banking deducted the full amount and then redirected to a payment-failed screen. I don't have an order ID and need the reversal checked urgently.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "explicit_urgency",
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-080",
+    "subject": "Double charge still not reversed — will dispute with bank",
+    "body": "I was charged twice for my Cotton Throw Blanket (ORD-82421) on 24 Sep and it has still not been reversed. If your payments team does not resolve this today, I am initiating a chargeback with my card issuer.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "legal_or_chargeback_threat",
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-081",
+    "subject": "Invoice GST breakdown request for ORD-82433",
+    "body": "Hello, could you email a revised tax invoice showing the GST split for my Enamel Kettle purchase (ORD-82433) from 7 Oct? Everything on the order itself was fine.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-082",
+    "subject": "Promo code didn't apply before card charge (ORD-82445)",
+    "body": "Hi, I entered the welcome code while ordering the Cotton Throw Blanket (ORD-82445) on 21 Oct, and the final total charged full price. Is there any way to adjust the discount or clarify eligibility?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-083",
+    "subject": "Debited twice during checkout retry for ORD-82465",
+    "body": "The checkout screen froze while paying for my Terracotta Table Lamp (ORD-82465), so I clicked pay again. Now both transactions went through on my debit card. Please help refund the duplicate payment.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-084",
+    "subject": "Charged twice on my card for ORD-82493",
+    "body": "Hi, I just placed order ORD-82493 for the Stoneware Dinner Set and my credit card statement shows two identical deductions for the exact same order. Please reverse the duplicate charge as soon as possible. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-085",
+    "subject": "UPI money deducted but order failed — Enamel Kettle",
+    "body": "Hello, I tried buying the Enamel Kettle on 14 Sep via UPI. The amount was debited from my bank account immediately, but the Kora Living checkout page crashed and no order confirmation appeared in my account. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-086",
+    "subject": "Duplicate billing alert for ORD-82526",
+    "body": "Good evening, I checked my bank app after purchasing the Acacia Chopping Board (ORD-82526) and noticed I was billed twice within one minute. Can your payments team confirm the extra charge will be reversed? Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-087",
+    "subject": "Payment failed yet funds debited on 21 Oct",
+    "body": "Hi team, during checkout for the Walnut Serving Tray to Pune, net banking deducted the full amount and then redirected to a payment-failed screen. I don't have an order ID and need the reversal checked urgently. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "explicit_urgency",
+      "payment_deducted_order_failed"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-088",
+    "subject": "Double charge still not reversed — will dispute with bank",
+    "body": "I was charged twice for my Matte Ceramic Planter (ORD-82573) on 16 Oct and it has still not been reversed. If your payments team does not resolve this today, I am initiating a chargeback with my card issuer. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "legal_or_chargeback_threat",
+      "payment_charged_twice"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-089",
+    "subject": "Invoice GST breakdown request for ORD-82580",
+    "body": "Hello, could you email a revised tax invoice showing the GST split for my Brass Floor Lamp purchase (ORD-82580) from 21 Oct? Everything on the order itself was fine. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-090",
+    "subject": "Promo code didn't apply before card charge (ORD-82598)",
+    "body": "Hi, I entered the welcome code while ordering the Terracotta Table Lamp (ORD-82598) on 14 Sep, and the final total charged full price. Is there any way to adjust the discount or clarify eligibility? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "payment_issues",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-091",
+    "subject": "Care instructions for Linen Duvet Cover",
+    "body": "Hi Kora Living, I am considering ordering the Linen Duvet Cover for our apartment in Chennai. Could you tell me if it is safe to wipe with a damp cloth or if it requires dry cleaning only?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-092",
+    "subject": "Dimensions and weight of Terracotta Table Lamp",
+    "body": "Hello, the product page for the Terracotta Table Lamp doesn't list the exact base diameter or total weight. Could you share the measurements before I place my order?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-093",
+    "subject": "Restock timeline for Walnut Serving Tray",
+    "body": "Hi team, the Walnut Serving Tray in warm sand has been out of stock since 24 Sep. Do you know when it will be restocked so I can order it to Jaipur?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-094",
+    "subject": "Material sourcing question — Rattan Accent Basket",
+    "body": "Good afternoon, is the Rattan Accent Basket food-safe and lead-free for everyday kitchen use? I want to be sure before buying a set for my family.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-095",
+    "subject": "Bulk gifting quote needed urgently for Brass Floor Lamp",
+    "body": "Hello, our office in Chandigarh wants to order several units of the Brass Floor Lamp for a client event next week and we need to confirm stock availability urgently today.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-096",
+    "subject": "Compatibility question about Ceramic Pour-Over Carafe",
+    "body": "Hi, does the Ceramic Pour-Over Carafe work with standard Indian wall sockets and warm LED bulbs, or does it need a specialty fitting?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-097",
+    "subject": "Colour match inquiry for Rattan Accent Basket",
+    "body": "Hello, I already own your stoneware pieces and want to know if the Rattan Accent Basket matches the matte ivory glaze or leans more cream.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-098",
+    "subject": "Outdoor suitability of Cotton Throw Blanket",
+    "body": "Can the Cotton Throw Blanket be placed on a covered balcony in Bengaluru during the monsoon, or is it strictly meant for indoor rooms?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-099",
+    "subject": "Care instructions for Fluted Glass Tumbler Set",
+    "body": "Hi Kora Living, I am considering ordering the Fluted Glass Tumbler Set for our apartment in Bengaluru. Could you tell me if it is safe to wipe with a damp cloth or if it requires dry cleaning only? Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-100",
+    "subject": "Dimensions and weight of Acacia Chopping Board",
+    "body": "Hello, the product page for the Acacia Chopping Board doesn't list the exact base diameter or total weight. Could you share the measurements before I place my order? Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-101",
+    "subject": "Restock timeline for Brass Floor Lamp",
+    "body": "Hi team, the Brass Floor Lamp in warm sand has been out of stock since 25 Oct. Do you know when it will be restocked so I can order it to Kochi? Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-102",
+    "subject": "Material sourcing question — Stoneware Dinner Set",
+    "body": "Good afternoon, is the Stoneware Dinner Set food-safe and lead-free for everyday kitchen use? I want to be sure before buying a set for my family. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-103",
+    "subject": "Bulk gifting quote needed urgently for Walnut Serving Tray",
+    "body": "Hello, our office in Chennai wants to order several units of the Walnut Serving Tray for a client event next week and we need to confirm stock availability urgently today. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-104",
+    "subject": "Compatibility question about Stoneware Dinner Set",
+    "body": "Hi, does the Stoneware Dinner Set work with standard Indian wall sockets and warm LED bulbs, or does it need a specialty fitting? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-105",
+    "subject": "Colour match inquiry for Brass Floor Lamp",
+    "body": "Hello, I already own your stoneware pieces and want to know if the Brass Floor Lamp matches the matte ivory glaze or leans more cream. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "product_questions",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-106",
+    "subject": "Update delivery address before dispatch — ORD-82860",
+    "body": "Hi team, I just placed order ORD-82860 for the Handwoven Jute Rug a few minutes ago and accidentally left my old flat number in Chennai. Could you update the shipping address before it leaves the warehouse?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-107",
+    "subject": "Wrong pin code entered on ORD-82875",
+    "body": "Hello, I noticed a typo in the pin code on my order ORD-82875 (Fluted Glass Tumbler Set). Since it has not been dispatched yet, can you correct the address right away?",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-108",
+    "subject": "Change delivery phone number on ORD-82901",
+    "body": "Hi support, I ordered the Rattan Accent Basket (ORD-82901) on 21 Oct as a gift for my sister in Mumbai and put my own mobile number by mistake. Can we switch the recipient contact number?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-109",
+    "subject": "Switch shipping to office address (ORD-82926)",
+    "body": "Good morning, nobody will be at our apartment during weekday afternoons in Kochi. Can I redirect order ORD-82926 (Acacia Chopping Board) to my office address before dispatch?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-110",
+    "subject": "Urgent address correction needed for ORD-82950",
+    "body": "Please hold dispatch on ORD-82950 (Matte Ceramic Planter)! Autofill put my previous city instead of Ahmedabad. I need the shipping address updated urgently before the courier picks it up.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-111",
+    "subject": "Missing apartment landmark on ORD-82967",
+    "body": "Hi, I forgot to include the tower name and gate code on order ORD-82967 for the Enamel Kettle. Could you add those delivery instructions to the shipping label?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-112",
+    "subject": "Can I change delivery address after dispatch (ORD-82975)?",
+    "body": "Hello, my Fluted Glass Tumbler Set (ORD-82975) already shows dispatched to Ahmedabad. I just had to travel unexpectedly — is there any option to reroute the shipment to my parents' address?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-113",
+    "subject": "Move delivery to neighbour's flat for ORD-82983",
+    "body": "Hi Kora Living, I placed ORD-82983 on 11 Oct for the Walnut Serving Tray. Before it ships out, could you update the flat number on the delivery address?",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-114",
+    "subject": "Update delivery address before dispatch — ORD-82990",
+    "body": "Hi team, I just placed order ORD-82990 for the Acacia Chopping Board a few minutes ago and accidentally left my old flat number in Kolkata. Could you update the shipping address before it leaves the warehouse? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-115",
+    "subject": "Wrong pin code entered on ORD-83016",
+    "body": "Hello, I noticed a typo in the pin code on my order ORD-83016 (Fluted Glass Tumbler Set). Since it has not been dispatched yet, can you correct the address right away? Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-116",
+    "subject": "Change delivery phone number on ORD-83039",
+    "body": "Hi support, I ordered the Rattan Accent Basket (ORD-83039) on 16 Oct as a gift for my sister in Jaipur and put my own mobile number by mistake. Can we switch the recipient contact number? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-117",
+    "subject": "Switch shipping to office address (ORD-83051)",
+    "body": "Good morning, nobody will be at our apartment during weekday afternoons in Hyderabad. Can I redirect order ORD-83051 (Block-Print Cushion Cover Set) to my office address before dispatch? Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-118",
+    "subject": "Urgent address correction needed for ORD-83062",
+    "body": "Please hold dispatch on ORD-83062 (Cotton Throw Blanket)! Autofill put my previous city instead of Ahmedabad. I need the shipping address updated urgently before the courier picks it up. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-119",
+    "subject": "Missing apartment landmark on ORD-83077",
+    "body": "Hi, I forgot to include the tower name and gate code on order ORD-83077 for the Brass Floor Lamp. Could you add those delivery instructions to the shipping label? Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-120",
+    "subject": "Can I change delivery address after dispatch (ORD-83085)?",
+    "body": "Hello, my Walnut Serving Tray (ORD-83085) already shows dispatched to Pune. I just had to travel unexpectedly — is there any option to reroute the shipment to my parents' address? Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "address_change",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-121",
+    "subject": "Broken Stoneware Dinner Set arrived today — ORD-83102",
+    "body": "Hi team, my Stoneware Dinner Set from order ORD-83102 was delivered to Indore this morning, and when I opened the box the ceramic base was cracked cleanly in two. I have photos of the item and box ready to send for a replacement.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-122",
+    "subject": "Received wrong item in parcel ORD-83111",
+    "body": "Hello, I ordered the Enamel Kettle under ORD-83111, but the box that arrived in Kolkata on 19 Sep contained a completely different cushion set instead. Please arrange a pickup and send the correct item.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-123",
+    "subject": "Chipped rim and scratched finish on Terracotta Table Lamp (ORD-83135)",
+    "body": "Good afternoon, the Terracotta Table Lamp I received today (ORD-83135) has a visible chip along the rim and deep scratches across the glaze. I am reporting this within hours of delivery and would like a free replacement.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-124",
+    "subject": "Defective switch on Stoneware Dinner Set — ORD-83159",
+    "body": "Hi support, my Stoneware Dinner Set (ORD-83159) arrived in Bengaluru yesterday, and the power switch flickers and refuses to stay on. The wiring looks defective out of the box. Please replace it.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-125",
+    "subject": "Wrong colour and size sent for ORD-83168",
+    "body": "I ordered the Matte Ceramic Planter (ORD-83168) on 16 Oct, yet the label inside shows a different colour and smaller dimension than what is on my invoice. Please swap it for the item I actually paid for.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-126",
+    "subject": "Shattered parcel delivered — need urgent replacement (ORD-83176)",
+    "body": "My Handwoven Jute Rug (ORD-83176) arrived completely shattered in Chandigarh just now. I need a replacement urgently before guests arrive this weekend. I can share photos of the damaged box immediately.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "explicit_urgency",
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-127",
+    "subject": "Damaged Ceramic Pour-Over Carafe and nobody replied — legal notice next",
+    "body": "Order ORD-83190 arrived cracked on 25 Oct and I sent photos right away. If I do not receive a replacement or full refund for this damaged Ceramic Pour-Over Carafe, I will file a consumer complaint and chargeback.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective",
+      "legal_or_chargeback_threat"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-128",
+    "subject": "Stained textile delivered in ORD-83198",
+    "body": "Hello, I unboxed the Brass Floor Lamp (ORD-83198) delivered today in Bengaluru and found dark oil stains across the fabric even though the outer carton looked fine. Requesting a replacement.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-129",
+    "subject": "Broken Stoneware Dinner Set arrived today — ORD-83214",
+    "body": "Hi team, my Stoneware Dinner Set from order ORD-83214 was delivered to Indore this morning, and when I opened the box the ceramic base was cracked cleanly in two. I have photos of the item and box ready to send for a replacement. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-130",
+    "subject": "Received wrong item in parcel ORD-83242",
+    "body": "Hello, I ordered the Ceramic Pour-Over Carafe under ORD-83242, but the box that arrived in Kochi on 11 Oct contained a completely different cushion set instead. Please arrange a pickup and send the correct item. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-131",
+    "subject": "Chipped rim and scratched finish on Enamel Kettle (ORD-83261)",
+    "body": "Good afternoon, the Enamel Kettle I received today (ORD-83261) has a visible chip along the rim and deep scratches across the glaze. I am reporting this within hours of delivery and would like a free replacement. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-132",
+    "subject": "Defective switch on Brass Floor Lamp — ORD-83283",
+    "body": "Hi support, my Brass Floor Lamp (ORD-83283) arrived in Mumbai yesterday, and the power switch flickers and refuses to stay on. The wiring looks defective out of the box. Please replace it. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-133",
+    "subject": "Wrong colour and size sent for ORD-83296",
+    "body": "I ordered the Stoneware Dinner Set (ORD-83296) on 21 Oct, yet the label inside shows a different colour and smaller dimension than what is on my invoice. Please swap it for the item I actually paid for. Thanks in advance.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "wrong_item_received"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-134",
+    "subject": "Shattered parcel delivered — need urgent replacement (ORD-83324)",
+    "body": "My Walnut Serving Tray (ORD-83324) arrived completely shattered in Chandigarh just now. I need a replacement urgently before guests arrive this weekend. I can share photos of the damaged box immediately. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "explicit_urgency",
+      "item_damaged_or_defective"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-135",
+    "subject": "Damaged Acacia Chopping Board and nobody replied — legal notice next",
+    "body": "Order ORD-83343 arrived cracked on 14 Sep and I sent photos right away. If I do not receive a replacement or full refund for this damaged Acacia Chopping Board, I will file a consumer complaint and chargeback. Thanks in advance.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "damaged_item",
+    "true_signals": [
+      "item_damaged_or_defective",
+      "legal_or_chargeback_threat"
+    ],
+    "true_priority": "high",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-136",
+    "subject": "Locked out of my Kora Living account",
+    "body": "Hi support, I tried signing in to check my Acacia Chopping Board order history and after a few wrong passwords my account says it is locked. I cannot access my orders at all.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-137",
+    "subject": "Password reset email not arriving",
+    "body": "Hello, I clicked forgot password three times over the past hour to unlock my account, checked spam and promotions, and still have not received any reset link.",
+    "channel": "email",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-138",
+    "subject": "OTP login failing repeatedly",
+    "body": "Hi team, every time I enter my mobile number to log in to Kora Living, the OTP either expires immediately or says my account is temporarily locked. Please help restore access.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-139",
+    "subject": "Account locked while trying to place urgent order",
+    "body": "I am locked out of my account right when I need to urgently check out a gift order for a Matte Ceramic Planter to Gurugram. Password reset keeps looping back to the error screen.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked",
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-140",
+    "subject": "How do I update my registered email address?",
+    "body": "Good morning, I can still sign in to my Kora Living profile, and I would like to change my saved email address before placing my next order. Where is that option in settings?",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-141",
+    "subject": "Cannot sign in to download invoice for ORD-83422",
+    "body": "Hi, my account has been locked since 21 Oct and I need to log in to download the GST invoice for order ORD-83422 (Acacia Chopping Board). Resetting the password didn't unlock it.",
+    "channel": "chat",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-142",
+    "subject": "Unsubscribe from promotional emails",
+    "body": "Hello, I love your Acacia Chopping Board collection, though I'm getting too many marketing newsletters each week. Could you help me opt out of promo emails without closing my account?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-143",
+    "subject": "Sign-in error after changing phone number",
+    "body": "Hi team, I got a new mobile number in Jaipur and now my Kora Living account is locked because two-step login sends the code to my old SIM. Can you help me regain access?",
+    "channel": "email",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-144",
+    "subject": "Locked out of my Kora Living account",
+    "body": "Hi support, I tried signing in to check my Stoneware Dinner Set order history and after a few wrong passwords my account says it is locked. I cannot access my orders at all. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-145",
+    "subject": "Password reset email not arriving",
+    "body": "Hello, I clicked forgot password three times over the past hour to unlock my account, checked spam and promotions, and still have not received any reset link. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-146",
+    "subject": "OTP login failing repeatedly",
+    "body": "Hi team, every time I enter my mobile number to log in to Kora Living, the OTP either expires immediately or says my account is temporarily locked. Please help restore access. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-147",
+    "subject": "Account locked while trying to place urgent order",
+    "body": "I am locked out of my account right when I need to urgently check out a gift order for a Terracotta Table Lamp to Pune. Password reset keeps looping back to the error screen. Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked",
+      "explicit_urgency"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-148",
+    "subject": "How do I update my registered email address?",
+    "body": "Good morning, I can still sign in to my Kora Living profile, and I would like to change my saved email address before placing my next order. Where is that option in settings? Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-149",
+    "subject": "Cannot sign in to download invoice for ORD-83546",
+    "body": "Hi, my account has been locked since 16 Oct and I need to log in to download the GST invoice for order ORD-83546 (Rattan Accent Basket). Resetting the password didn't unlock it. Thanks in advance.",
+    "channel": "whatsapp",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "account_locked"
+    ],
+    "true_priority": "medium",
+    "is_ambiguous": false,
+    "secondary_category": null
+  },
+  {
+    "id": "EV-150",
+    "subject": "Unsubscribe from promotional emails",
+    "body": "Hello, I love your Cotton Throw Blanket collection, though I'm getting too many marketing newsletters each week. Could you help me opt out of promo emails without closing my account? Thanks in advance.",
+    "channel": "web_form",
+    "language": "en",
+    "true_category": "account_login",
+    "true_signals": [
+      "general_inquiry"
+    ],
+    "true_priority": "low",
+    "is_ambiguous": false,
+    "secondary_category": null
+  }
+]

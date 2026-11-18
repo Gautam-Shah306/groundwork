@@ -69,6 +69,27 @@ docker compose down
   Remove-Item data\groundwork.db -ErrorAction SilentlyContinue
   ```
 
+## Synthetic Data
+
+All operational tickets, evaluation tickets, policies, and ground-truth references belong to the **fictional** company **Kora Living** and are deterministically generated with fixed seed `42` (identical output bytes on every run).
+
+- **Generated files (in `data/`):**
+  - `data/sample_tickets.csv` — 2,000 synthetic support tickets over 8 weeks (`+05:30` IST) with planted operational bottlenecks and exact injected data-quality anomalies.
+  - `data/eval_tickets.json` — 150 varied synthetic triage evaluation tickets (English, Hinglish, ambiguous, short, urgent/delayed).
+  - `data/answer_key.json` — planted-cause reference for tests and documentation only (never read by `backend/app`, per `R6`).
+- **Configuration and policy files:** `config/queues.yaml`, `config/priority_rules.yaml`, and fictional `knowledge/policies.md`.
+- **Regenerate synthetic datasets (PowerShell, native Python 3.11 venv):**
+  ```powershell
+  backend\.venv\Scripts\python.exe scripts\generate_data.py
+  ```
+- **Verify triage configuration:**
+  ```powershell
+  Push-Location backend
+  .\.venv\Scripts\python.exe -m app.triage.check
+  Pop-Location
+  ```
+  See [`docs/data-dictionary.md`](./docs/data-dictionary.md) for the complete schema and vocabularies.
+
 ## Run Tests
 
 ### Backend (pytest + coverage gate >= 90%)

@@ -41,3 +41,28 @@
 - Prompt 1's single backend test warning (`StarletteDeprecationWarning: Using httpx with starlette.testclient is deprecated; install httpx2 instead.`) originates inside `.venv\Lib\site-packages\fastapi\testclient.py:1` (upstream Starlette 1.10.0) and was left untouched and reported verbatim.
 - PowerShell stripped double quotes inside inline `python -c '...'` arguments; using a single-quoted PowerShell here-string piped to `python -` avoided quoting issues cleanly.
 - Under heavy container load immediately after `docker compose up -d --build`, one async Vitest `waitFor` timed out at the default 1s window; once the empty-state text alignment fix was applied, all 25/25 frontend tests passed cleanly in 28.69s.
+
+
+## Prompt 3 — Synthetic Data Generator, Triage Config, Policies & Deterministic Priority Function (2026-11-18)
+
+### What was built
+- **Part 0 Audit-History Leak Fix:** Enabled `sqlite_autoincrement=True` on `Engagement.__table_args__` in `backend/app/models.py` so SQLite never reuses deleted engagement IDs, recreated `data/groundwork.db` and re-seeded cleanly, and added `test_new_engagement_does_not_inherit_deleted_engagement_audit_history`.
+- **Dependencies & Docker Mounts:** Added `pandas`, `numpy`, and `pyyaml` to `backend/requirements.txt` and `backend/pyproject.toml`, added `resolved_config_dir` and `resolved_knowledge_dir` helpers on `Settings` in `backend/app/config.py`, and mounted `./config:/app/config:ro` and `./knowledge:/app/knowledge:ro` into the backend container in `docker-compose.yml`.
+- **Triage Config & Deterministic Priority (`config/`, `backend/app/triage/`):**
+  - Created `config/queues.yaml` (7 categories with display names mapped to 5 queues) and `config/priority_rules.yaml` (10 closed-vocabulary signals, 9 ordered rules `R-LEGAL` through `R-GENERAL`, default `R-DEFAULT:medium`).
+  - Built Pydantic config validator (`app/triage/config.py`), pure deterministic `evaluate_priority()` (`app/triage/priority.py`, no LLM involvement per R1/R4), CLI check (`python -m app.triage.check`), and 16 unit tests (`backend/tests/test_triage_priority.py`).
+- **Knowledge Base:** Created fictional Kora Living policies in `knowledge/policies.md` covering returns, damaged/wrong replacements, refund processing, payment reversals, delivery timelines, address changes, account lockouts, escalation rules, and bracketed-placeholder tone guidelines (R8).
+- **Deterministic Synthetic Data Generator (`scripts/`):**
+  - Created `scripts/eval_templates.py` (hand-written varied phrasings: >=8 English templates per category, 14 Hinglish, 17 English ambiguous + 2 Hinglish ambiguous = 19 ambiguous, 14 very short <12 words) and `scripts/generate_data.py` (fixed seed `42`, byte-identical SHA256 across runs).
+  - Generated `data/sample_tickets.csv` (2,000 rows over 8 weeks in `+05:30` IST with planted bottlenecks and exact 12/3/8/6/9/4 injected quality issues), `data/eval_tickets.json` (150 unique tickets with `true_priority` verified against `evaluate_priority()`), and `data/answer_key.json` (for tests/docs only; verified unreferenced by `backend/app` per R6).
+  - Added 19 tests in `backend/tests/test_data_generation.py` (total backend suite: 61 passed, 92.75% coverage).
+- **Documentation:** Created `docs/data-dictionary.md`, added the `Synthetic Data` section to `README.md`, and added the Docker lockfile sync rule to `AGENTS.md`.
+
+### Decisions made
+- **Separate `scripts/eval_templates.py` data module:** Kept hand-written evaluation phrasings separate from generation logic in `scripts/generate_data.py` for readability and maintainability.
+- **Disjoint quality-issue injection:** Applied each of the 6 injected anomalies (12 missing FRT, 3 duplicate IDs, 8 FRT-before-created, 6 `billing_misc`, 9 missing resolved_at, 4 >300-day resolved_at) to strictly non-overlapping rows so counts are exact and clean-row planted-effect analysis is unambiguous.
+- **Exclusive `R-GENERAL` guard (`only_if_no_other_signals: true`):** Explicitly enforced in `priority_rules.yaml` and `evaluate_priority()` so `general_inquiry` paired with any other signal can never evaluate to `low`.
+
+### Anything surprising
+- Tuning lognormal parameters on seed `42` landed staffed triage lag at `3.43 h`, triage share of FRT at `63.6%` (within 55–65%), order+returns vs other reassignment at `33.3%` vs `8.8%` (3.78x), afternoon vs evening FRT at `4.79 h` vs `7.45 h`, and top-3 agent share at `40.0%` (`0.71 h` FRT delta vs `3.43 h` triage lag).
+- `where.exe node` confirmed Node is not installed on the host, so all frontend checks ran cleanly in Docker (`25/25` Vitest tests, `0` TypeScript errors).

@@ -1,0 +1,75 @@
+signals:
+  payment_charged_twice: Customer reports duplicate or repeated charges for the same order.
+  payment_deducted_order_failed: Payment was debited from the customer account but order confirmation failed.
+  item_damaged_or_defective: Delivered item arrived cracked, broken, scratched, or non-functional.
+  wrong_item_received: Delivered parcel contains a different product, size, or finish than ordered.
+  delivery_delayed_over_3_days: Shipment has passed its expected delivery window by more than three days or tracking has stalled over three days.
+  explicit_urgency: Customer states a hard deadline, event date, or urgent time sensitivity.
+  refund_overdue: Expected refund has not arrived within the stated five-to-seven business day window.
+  legal_or_chargeback_threat: Customer threatens legal action, consumer court complaint, or bank chargeback.
+  account_locked: Customer cannot sign in, is locked out, or cannot complete password reset.
+  general_inquiry: Routine product, care, availability, or policy question with no urgent issue.
+
+rules:
+  - id: R-LEGAL
+    description: Legal or chargeback threat escalates immediately to High priority and Escalations queue.
+    any_of:
+      - legal_or_chargeback_threat
+    priority: high
+    queue_override: Escalations
+
+  - id: R-PAY
+    description: Duplicate charges or failed orders with deducted funds require High priority.
+    any_of:
+      - payment_charged_twice
+      - payment_deducted_order_failed
+    priority: high
+
+  - id: R-DAMAGE
+    description: Damaged, defective, or wrong delivered items require High priority.
+    any_of:
+      - item_damaged_or_defective
+      - wrong_item_received
+    priority: high
+
+  - id: R-DELAY-URGENT
+    description: Delivery delayed more than three days combined with explicit urgency is High priority.
+    all_of:
+      - delivery_delayed_over_3_days
+      - explicit_urgency
+    priority: high
+
+  - id: R-REFUND
+    description: Overdue refund inquiry is Medium priority.
+    any_of:
+      - refund_overdue
+    priority: medium
+
+  - id: R-DELAY
+    description: Delivery delay over three days without explicit urgency is Medium priority.
+    any_of:
+      - delivery_delayed_over_3_days
+    priority: medium
+
+  - id: R-URGENT
+    description: Explicit customer urgency without a higher-severity trigger is Medium priority.
+    any_of:
+      - explicit_urgency
+    priority: medium
+
+  - id: R-ACCOUNT
+    description: Account lockout preventing login or checkout is Medium priority.
+    any_of:
+      - account_locked
+    priority: medium
+
+  - id: R-GENERAL
+    description: General inquiry with no other operational signals is Low priority.
+    all_of:
+      - general_inquiry
+    only_if_no_other_signals: true
+    priority: low
+
+default:
+  rule_id: R-DEFAULT
+  priority: medium

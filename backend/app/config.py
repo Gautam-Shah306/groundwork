@@ -75,6 +75,16 @@ class Settings(BaseSettings):
         return resolve_database_url(self.database_url)
 
     @property
+    def resolved_config_dir(self) -> Path:
+        """Return the repo-level config directory both natively and in Docker."""
+        return get_project_root() / "config"
+
+    @property
+    def resolved_knowledge_dir(self) -> Path:
+        """Return the repo-level knowledge directory both natively and in Docker."""
+        return get_project_root() / "knowledge"
+
+    @property
     def cors_origin_list(self) -> list[str]:
         """Parse comma-separated CORS origins into a clean list."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

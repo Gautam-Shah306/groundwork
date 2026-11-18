@@ -1,0 +1,76 @@
+{
+  "warning": "Synthetic ground truth for tests and documentation only. Application code in backend/app must never import or read this file (R6).",
+  "seed": 42,
+  "period": {
+    "start": "2026-09-07T00:00:00+05:30",
+    "end": "2026-11-01T23:59:59+05:30",
+    "timezone": "+05:30",
+    "weeks": 8
+  },
+  "planted_causes": [
+    {
+      "id": "slow_manual_triage",
+      "strength": "dominant",
+      "intended": "Median staffed created_at->assigned_at lag ~3-4h; ~55-65% share of total first-response time."
+    },
+    {
+      "id": "misrouting_order_and_returns",
+      "strength": "strong_secondary",
+      "intended": "order_tracking and returns_refunds reassigned ~35% vs ~8% for other categories (+1-3h per reassignment)."
+    },
+    {
+      "id": "evening_coverage_gap",
+      "strength": "moderate_secondary",
+      "intended": "18:00-22:00 IST tickets (3 late-shift agents) wait >=1h longer than 14:00-18:00 IST (12 agents)."
+    },
+    {
+      "id": "mild_workload_skew",
+      "strength": "weak",
+      "intended": "Top 3 agents carry ~40% of assigned volume with a small delay impact far below triage lag."
+    }
+  ],
+  "injected_quality_issues": {
+    "resolved_missing_first_response_at": 12,
+    "duplicate_ticket_ids": 3,
+    "first_response_before_created": 8,
+    "unknown_category_billing_misc": 6,
+    "resolved_missing_resolved_at": 9,
+    "resolved_over_300_days": 4
+  },
+  "measured_effects": {
+    "total_rows": 2000,
+    "clean_rows": 1958,
+    "distinct_customers": 1269,
+    "median_triage_lag_staffed_hours": 3.428,
+    "median_agent_response_lag_staffed_hours": 1.925,
+    "median_first_response_staffed_hours": 5.722,
+    "triage_share_of_frt_staffed": 0.6365,
+    "triage_share_of_frt_all": 0.6547,
+    "reassignment_rate_order_and_returns": 0.3327,
+    "reassignment_rate_other_categories": 0.0877,
+    "median_frt_afternoon_14_18_hours": 4.789,
+    "median_frt_evening_18_22_hours": 7.451,
+    "top_three_agents": [
+      "Agent 01",
+      "Agent 02",
+      "Agent 03"
+    ],
+    "top_three_agent_volume_share": 0.3999,
+    "top_three_vs_other_agent_frt_delta_hours": 0.711,
+    "injected_quality_issues": {
+      "resolved_missing_first_response_at": 12,
+      "duplicate_ticket_ids": 3,
+      "first_response_before_created": 8,
+      "unknown_category_billing_misc": 6,
+      "resolved_missing_resolved_at": 9,
+      "resolved_over_300_days": 4
+    }
+  },
+  "eval_set_summary": {
+    "total_tickets": 150,
+    "ambiguous_count": 19,
+    "hinglish_count": 14,
+    "short_under_12_words_count": 14,
+    "urgency_or_delay_count": 43
+  }
+}

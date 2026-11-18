@@ -27,6 +27,11 @@ company ("Kora Living"). All data is synthetic and must be labelled as such.
   - `docker compose exec -T frontend npm run test`
   - `docker compose exec -T frontend npx tsc --noEmit`
   - `docker compose exec -T frontend npm run build`
+- Lockfile sync rule: whenever a frontend dependency is added or changed inside
+  Docker, copy the updated `package-lock.json` back to the host
+  (`docker compose cp frontend:/app/package-lock.json frontend/package-lock.json`)
+  and confirm it appears in `git status`. Do not run git commands that modify
+  history.
 
 ## Non-negotiable rules
 - **R1.** The LLM NEVER calculates, estimates or invents business metrics. All numbers

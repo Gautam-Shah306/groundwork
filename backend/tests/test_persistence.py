@@ -428,3 +428,24 @@ def test_all_models_create_tables(app_client) -> None:
         "pilot_simulations",
     }
     assert expected_tables.issubset(table_names)
+
+
+def test_new_engagement_does_not_inherit_deleted_engagement_audit_history(app_client) -> None:
+    client, _ = app_client
+    eng_a = _create_sample_engagement(client, "Engagement A")
+    eng_b = _create_sample_engagement(client, "Engagement B")
+    assert eng_a["id"] != eng_b["id"]
+
+    delete_resp = client.delete(f"/api/engagements/{eng_b['id']}")
+    assert delete_resp.status_code == 204
+
+    eng_c = _create_sample_engagement(client, "Engagement C")
+    assert eng_c["id"] != eng_b["id"]
+    assert eng_c["id"] > eng_b["id"]
+
+    activity = client.get(f"/api/engagements/{eng_c['id']}/activity").json()
+    assert len(activity) == 1
+    assert activity[0]["action"] == "create"
+    assert activity[0]["entity_type"] == "engagement"
+    assert activity[0]["entity_id"] == str(eng_c["id"])
+    assert activity[0]["details"]["name"] == "Engagement C"

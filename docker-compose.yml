@@ -12,6 +12,8 @@ services:
       SEED_ON_START: ${SEED_ON_START:-false}
     volumes:
       - ./data:/app/data
+      - ./config:/app/config:ro
+      - ./knowledge:/app/knowledge:ro
     ports:
       - "8000:8000"
 

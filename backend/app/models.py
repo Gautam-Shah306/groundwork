@@ -70,6 +70,7 @@ class Base(DeclarativeBase):
 
 class Engagement(Base):
     __tablename__ = "engagements"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
