@@ -101,6 +101,10 @@ All operational tickets, evaluation tickets, policies, and ground-truth referenc
    - `GET /api/engagements/{id}/datasets` and `GET /api/engagements/{id}/datasets/{dataset_id}/rows?flag=<code>&page=1&page_size=25`
    - `DELETE /api/engagements/{id}/datasets/{dataset_id}`
 
+## Metrics and Findings
+
+All operational KPIs, distribution metrics, factor comparisons, and rule-based findings are computed deterministically from stored SQLite ticket rows via `GET /api/engagements/{id}/datasets/{dataset_id}/diagnostics` (read-only, configured in `config/metrics.yaml`). See [`docs/metrics.md`](./docs/metrics.md) for exact formulas, scopes, right-censoring caveats, illustrative SLA thresholds, and finding rules.
+
 ## Run Tests
 
 ### Backend (pytest + coverage gate >= 90%)

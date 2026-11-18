@@ -136,6 +136,95 @@ export interface DatasetRowsPage {
   items: TicketRowRecord[];
 }
 
+export interface DiagnosticsDatasetSummary {
+  id: number;
+  engagement_id: number;
+  filename: string;
+  is_sample: boolean;
+  is_active: boolean;
+  uploaded_at: string;
+  record_count: number;
+  period_start: string | null;
+  period_end: string | null;
+}
+
+export interface DiagnosticsKpi {
+  metric_id: string;
+  name: string;
+  value: number | null;
+  unit: string;
+  period_start: string | null;
+  period_end: string | null;
+  n: number;
+  definition: string;
+  scope: string;
+  n_excluded: number;
+  exclusions: Record<string, number>;
+  note?: string | null;
+}
+
+export interface MetricResultRecord<T = unknown> {
+  metric_id: string;
+  title: string;
+  definition: string;
+  unit: string;
+  scope: string;
+  n_included: number;
+  n_excluded: number;
+  exclusions: Record<string, number>;
+  params: Record<string, unknown>;
+  data: T;
+  notes: string[];
+  as_of: string | null;
+}
+
+export interface FindingEvidenceRef {
+  metric_id: string;
+  params: Record<string, unknown>;
+  label: string;
+  value: number | string | null;
+  unit: string;
+  n: number;
+}
+
+export interface ValidationQuestionItem {
+  text: string;
+  kind: "template_question";
+  finding_id: string | null;
+}
+
+export interface DiagnosticFinding {
+  id: string;
+  title: string;
+  strength: "strong" | "moderate" | "weak" | "info" | null;
+  status: "supported" | "insufficient_data";
+  observation: { type: "observed_fact"; text: string };
+  hypothesis: { type: "hypothesis"; text: string };
+  evidence: FindingEvidenceRef[];
+  limitations: string[];
+  validation_questions: ValidationQuestionItem[];
+}
+
+export interface DiagnosticsResponse {
+  dataset: DiagnosticsDatasetSummary;
+  as_of: string | null;
+  timezone: string;
+  scope_summary: {
+    total_rows: number;
+    rows_valid_for_all_metrics: number;
+    excluded_by_scope: {
+      all_metrics: number;
+      response_metrics: number;
+      resolution_metrics: number;
+      triage_metrics: number;
+    };
+  };
+  kpis: DiagnosticsKpi[];
+  metrics: Record<string, MetricResultRecord>;
+  findings: DiagnosticFinding[];
+  validation_questions: ValidationQuestionItem[];
+}
+
 export function getApiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL ?? "";
   return configured.replace(/\/+$/, "");
@@ -403,4 +492,29 @@ export async function deleteDataset(
       await extractErrorMessage(response, "Unable to delete dataset")
     );
   }
+}
+
+export async function fetchDiagnostics(
+  engagementId: number,
+  datasetId: number,
+  signal?: AbortSignal
+): Promise<DiagnosticsResponse> {
+  const response = await fetch(
+    buildApiUrl(
+      `/api/engagements/${engagementId}/datasets/${datasetId}/diagnostics`
+    ),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load diagnostics analysis")
+    );
+  }
+
+  return (await response.json()) as DiagnosticsResponse;
 }
