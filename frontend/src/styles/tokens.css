@@ -1,0 +1,47 @@
+:root {
+  /* Colours */
+  --color-canvas: #F7F7F4;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #FAFAF8;
+  --color-ink: #202A35;
+  --color-muted: #687482;
+  --color-accent: #526B89;
+  --color-accent-soft: #EEF2F6;
+  --color-border: #E7E9E8;
+
+  --color-success: #267A59;
+  --color-success-soft: #EAF4EF;
+  --color-warning: #A96F2C;
+  --color-warning-soft: #F8F0E5;
+  --color-danger: #B84D49;
+  --color-danger-soft: #F8ECEB;
+
+  /* Typography */
+  --font-interface: "Inter", sans-serif;
+  --font-display: "Instrument Serif", Georgia, serif;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-control: 5px;
+  --radius-card: 7px;
+  --radius-pill: 999px;
+
+  /* Borders and elevation */
+  --border-default: 1px solid var(--color-border);
+  --shadow-subtle: 0 7px 24px rgba(32, 42, 53, 0.03);
+
+  /* Layout */
+  --sidebar-width: 230px;
+  --topbar-height: 64px;
+  --content-max-width: 1380px;
+}
