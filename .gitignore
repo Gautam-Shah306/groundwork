@@ -8,3 +8,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+# test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
