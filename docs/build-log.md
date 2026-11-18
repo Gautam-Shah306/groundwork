@@ -66,3 +66,27 @@
 ### Anything surprising
 - Tuning lognormal parameters on seed `42` landed staffed triage lag at `3.43 h`, triage share of FRT at `63.6%` (within 55–65%), order+returns vs other reassignment at `33.3%` vs `8.8%` (3.78x), afternoon vs evening FRT at `4.79 h` vs `7.45 h`, and top-3 agent share at `40.0%` (`0.71 h` FRT delta vs `3.43 h` triage lag).
 - `where.exe node` confirmed Node is not installed on the host, so all frontend checks ran cleanly in Docker (`25/25` Vitest tests, `0` TypeScript errors).
+
+
+## Prompt 4 — CSV Upload, Validation Pipeline & Diagnostics Data Screen (2026-11-18)
+
+### What was built
+- **Part 0 `Ticket` Surrogate Key Fix:** Updated `Ticket` in `backend/app/models.py` to use a surrogate autoincrement integer primary key (`row_id`, `sqlite_autoincrement=True`) with `ticket_id` as a plain indexed non-unique string column (and added `is_sample` to `Dataset`). Recreated `data/groundwork.db`, re-seeded via `python -m app.seed`, added `test_ticket_model_allows_duplicate_ticket_ids_and_same_ids_across_engagements`, and added `resolved_data_dir` on `Settings` (`get_project_root() / "data"`) so `data/sample_tickets.csv` resolves identically natively and via Docker's `./data:/app/data` mount.
+- **Backend Ingestion & Validation (`backend/app/ingest/`, `backend/app/api/datasets.py`):**
+  - Built pure CSV parser (`parse.py`: `.csv` extension check, 10 MB / 50,000-row limits, `utf-8-sig` BOM handling, `pandas.read_csv(..., dtype=str, keep_default_na=False)`, exact 13 required columns, extra-column warning, cell trimming, lowercasing of vocabulary fields while preserving ID case, plain-text retention of formula-prefix cells `= + - @`).
+  - Built deterministic validator (`validate.py`: UTC timestamp storage with `Asia/Kolkata` fallback + `timestamps_without_timezone` warning, exact 14 check codes with scope flags `all_metrics`, `response_metrics`, `resolution_metrics`, `triage_metrics`, `IMPLAUSIBLE_DURATION_DAYS = 180`, no rows dropped).
+  - Built atomic transactional service (`service.py`) storing `Dataset`, all `Ticket` rows (populating real `row_id` example references), and `AuditLog` entries; added `POST /datasets`, `POST /datasets/sample`, `GET /datasets`, `GET /datasets/{dataset_id}`, `GET /datasets/{dataset_id}/rows`, and `DELETE /datasets/{dataset_id}` endpoints.
+  - Added `python-multipart` to `backend/requirements.txt` and `backend/pyproject.toml`, and added 31 ingestion tests (`backend/tests/test_ingest.py`; total 93 backend tests passing at 93.64% coverage).
+- **Frontend Diagnostics Data Screen (`frontend/src/pages/DiagnosticsPage.tsx`):**
+  - Implemented engagement empty state, keyboard-operable CSV dropzone (`Enter`/`Space`) with 10 MB / 50,000-row limits and required-columns reference, `"Load sample dataset"` action with `SyntheticDataNotice`, upload progress phases (`Uploading`, `Validating`, `Saving`) with indeterminate progressbar and live region, error state retaining filename + retry, dataset overview & switcher, confirmation-gated delete, `Observed fact` validation summary with plain-language per-scope exclusion statement, passed-checks toggle, expandable inline row examples, and paginated row drill-down (plain text rendering only — never HTML).
+  - Added 14 Vitest tests in `frontend/src/__tests__/Diagnostics.test.tsx` (total 39 frontend tests passing).
+- **Documentation:** Added Section 6 (`Validation Pipeline & Rules`) to `docs/data-dictionary.md` and `Uploading Data` to `README.md`.
+
+### Decisions made
+- **Prompt 3 data-shaping note:** Recorded that the staffed-hours median agent response lag in `scripts/generate_data.py` is about 1.9 h (not the ~1 h first specified) so that triage lag is about 64% of first-response time.
+- **Scoping `assignment_order_inconsistent`:** Checked `assigned_at > first_response_at` only when `first_response_at >= created_at`, preventing rows with corrupt `first_response_before_created` timestamps from spuriously contaminating `triage_metrics`.
+- **Single-transaction `row_id` example references:** Flushed `Ticket` inserts inside the upload transaction before finalizing `Dataset.validation_report` so up-to-5 example rows per check reference real database `row_id`s while preserving full rollback on any failure.
+
+### Anything surprising
+- Placing the hidden `<input type="file" />` inside the dropzone's `<div onClick={...}>` caused `fileInput.click()` to bubble back up and fire twice on keyboard `Enter`/`Space` — caught immediately by the keyboard-operability test and fixed by moving the hidden input outside the clickable dropzone container.
+- Starlette `1.10.0` deprecated `HTTP_422_UNPROCESSABLE_ENTITY` in favor of `HTTP_422_UNPROCESSABLE_CONTENT`; updated `backend/app/api/datasets.py` so no warnings originate from our own code.

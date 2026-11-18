@@ -47,6 +47,95 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface ValidationExampleRef {
+  row_id: number;
+  ticket_id: string;
+}
+
+export interface ValidationCheckReport {
+  code: string;
+  severity: "warning";
+  count: number;
+  affects: string[];
+  message: string;
+  recommended_action: string;
+  examples: ValidationExampleRef[];
+}
+
+export interface DatasetWarning {
+  code: string;
+  severity: string;
+  count: number;
+  message: string;
+  columns?: string[];
+  assumed_timezone?: string;
+}
+
+export interface ValidationReport {
+  record_count: number;
+  period_start: string | null;
+  period_end: string | null;
+  distinct_ticket_ids: number;
+  distinct_customers: number;
+  dataset_warnings: DatasetWarning[];
+  checks: ValidationCheckReport[];
+  rows_valid_for_all_metrics: number;
+  excluded_by_scope: {
+    all_metrics: number;
+    response_metrics: number;
+    resolution_metrics: number;
+    triage_metrics: number;
+  };
+}
+
+export interface DatasetRecord {
+  id: number;
+  engagement_id: number;
+  filename: string;
+  is_sample: boolean;
+  is_active: boolean;
+  uploaded_at: string;
+  record_count: number;
+  period_start: string | null;
+  period_end: string | null;
+  validation_report: ValidationReport;
+}
+
+export interface TicketFlag {
+  code: string;
+  affects: string[];
+}
+
+export interface TicketRowRecord {
+  row_id: number;
+  ticket_id: string;
+  engagement_id: number;
+  dataset_id: number;
+  created_at: string | null;
+  assigned_at: string | null;
+  first_response_at: string | null;
+  resolved_at: string | null;
+  category: string | null;
+  priority: string | null;
+  queue: string | null;
+  assigned_agent: string | null;
+  status: string | null;
+  channel: string | null;
+  reassignment_count: number;
+  customer_id: string | null;
+  is_valid: boolean;
+  validation_flags: TicketFlag[];
+}
+
+export interface DatasetRowsPage {
+  dataset_id: number;
+  flag: string | null;
+  page: number;
+  page_size: number;
+  total: number;
+  items: TicketRowRecord[];
+}
+
 export function getApiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL ?? "";
   return configured.replace(/\/+$/, "");
@@ -62,6 +151,14 @@ async function extractErrorMessage(response: Response, fallback: string): Promis
     const body = (await response.json()) as { detail?: unknown };
     if (typeof body.detail === "string" && body.detail.trim()) {
       return body.detail;
+    }
+    if (
+      body.detail &&
+      typeof body.detail === "object" &&
+      !Array.isArray(body.detail) &&
+      typeof (body.detail as { message?: unknown }).message === "string"
+    ) {
+      return (body.detail as { message: string }).message;
     }
     if (Array.isArray(body.detail) && body.detail.length > 0) {
       const first = body.detail[0] as { msg?: string };
@@ -188,4 +285,122 @@ export async function fetchActivity(
   }
 
   return (await response.json()) as AuditLogEntry[];
+}
+
+export async function fetchDatasets(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<DatasetRecord[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/datasets`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load datasets")
+    );
+  }
+
+  return (await response.json()) as DatasetRecord[];
+}
+
+export async function uploadDatasetFile(
+  engagementId: number,
+  file: File
+): Promise<DatasetRecord> {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/datasets`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to upload CSV dataset")
+    );
+  }
+
+  return (await response.json()) as DatasetRecord;
+}
+
+export async function loadSampleDataset(
+  engagementId: number
+): Promise<DatasetRecord> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/datasets/sample`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load sample dataset")
+    );
+  }
+
+  return (await response.json()) as DatasetRecord;
+}
+
+export async function fetchDatasetRows(
+  engagementId: number,
+  datasetId: number,
+  options: { flag?: string | null; page?: number; pageSize?: number } = {},
+  signal?: AbortSignal
+): Promise<DatasetRowsPage> {
+  const params = new URLSearchParams();
+  if (options.flag) {
+    params.set("flag", options.flag);
+  }
+  params.set("page", String(options.page ?? 1));
+  params.set("page_size", String(options.pageSize ?? 25));
+
+  const response = await fetch(
+    buildApiUrl(
+      `/api/engagements/${engagementId}/datasets/${datasetId}/rows?${params.toString()}`
+    ),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load flagged ticket rows")
+    );
+  }
+
+  return (await response.json()) as DatasetRowsPage;
+}
+
+export async function deleteDataset(
+  engagementId: number,
+  datasetId: number
+): Promise<void> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/datasets/${datasetId}`),
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to delete dataset")
+    );
+  }
 }

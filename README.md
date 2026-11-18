@@ -90,6 +90,17 @@ All operational tickets, evaluation tickets, policies, and ground-truth referenc
   ```
   See [`docs/data-dictionary.md`](./docs/data-dictionary.md) for the complete schema and vocabularies.
 
+## Uploading Data
+
+1. Open **Diagnostics** in the workspace sidebar (with an engagement selected).
+2. Upload any `.csv` ticket export matching the 13 required columns (up to **10 MB** / **50,000 rows**, UTF-8 or UTF-8 with BOM), **or** click **Load sample dataset** to run `data/sample_tickets.csv` through the exact same validation pipeline.
+3. Invalid rows are never dropped — every row is stored with deterministic flags (`all_metrics`, `response_metrics`, `resolution_metrics`, `triage_metrics`) and inspectable via the per-check row drill-down.
+4. Equivalent API endpoints:
+   - `POST /api/engagements/{id}/datasets` (multipart `.csv` file upload)
+   - `POST /api/engagements/{id}/datasets/sample` (loads `data/sample_tickets.csv`)
+   - `GET /api/engagements/{id}/datasets` and `GET /api/engagements/{id}/datasets/{dataset_id}/rows?flag=<code>&page=1&page_size=25`
+   - `DELETE /api/engagements/{id}/datasets/{dataset_id}`
+
 ## Run Tests
 
 ### Backend (pytest + coverage gate >= 90%)

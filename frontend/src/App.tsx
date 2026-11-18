@@ -4,6 +4,7 @@ import { EmptyState, Eyebrow } from "./components/ui";
 import { EngagementProvider } from "./context/EngagementContext";
 import { NAV_ITEMS } from "./lib/navigation";
 import { DevComponentsPage } from "./pages/DevComponentsPage";
+import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { EngagementsPage } from "./pages/EngagementsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { StagePlaceholderPage } from "./pages/StagePlaceholderPage";
@@ -31,7 +32,10 @@ function NotFoundPage() {
 
 export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
   const placeholderItems = NAV_ITEMS.filter(
-    (item) => item.id !== "overview" && item.id !== "engagements"
+    (item) =>
+      item.id !== "overview" &&
+      item.id !== "engagements" &&
+      item.id !== "diagnostics"
   );
 
   return (
@@ -40,6 +44,7 @@ export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
         <Route element={<AppShell />}>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/engagements" element={<EngagementsPage />} />
+          <Route path="/diagnostics" element={<DiagnosticsPage />} />
           {placeholderItems.map((item) => (
             <Route
               key={item.id}

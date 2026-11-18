@@ -96,3 +96,46 @@ JSON array of **150** synthetic support tickets used exclusively for offline tri
 `data/answer_key.json` documents the fixed generator seed (`42`), intended planted operational causes, exact injected data-quality counts, and measured planted-effect numbers.
 
 **Non-negotiable rule (R6):** `data/answer_key.json` is strictly for **automated tests and documentation only**. Application code under `backend/app/` must **never** import, open, read, or expose `data/answer_key.json` to any API response or LLM prompt.
+
+
+---
+
+## 6. Validation Pipeline & Rules
+
+Uploaded ticket CSVs are validated deterministically by `backend/app/ingest/` (`parse.py`, `validate.py`, `service.py`) with no LLM involvement (`R1`, `R4`).
+
+### File Limits & Structural Checks
+- **File extension:** Only `.csv` files are accepted (checked by filename extension, never trusted from HTTP `Content-Type`).
+- **Size & row limits:** Maximum **10 MB** per file and **50,000 rows**.
+- **Encoding & parsing:** Decoded as UTF-8 (`utf-8-sig` handles BOM cleanly). Empty files, non-UTF-8 files, missing header rows, duplicate headers, 0-row files, or malformed CSVs return **HTTP 422** with an actionable error message and store nothing.
+- **Required columns:** All 13 columns from Section 1 are required. Missing any required column returns **HTTP 422** listing missing and unexpected columns and stores nothing. Unexpected extra columns (when all 13 required columns are present) are ignored and recorded as a dataset-level warning (`extra_columns_ignored`).
+- **Atomic storage:** Every upload runs in a single database transaction — on any failure, no partial `Dataset` or `Ticket` rows are saved.
+
+### Normalisation & Timezone Rules
+- **Cell parsing:** Parsed with `pandas.read_csv(..., dtype=str, keep_default_na=False)` so no values are silently coerced.
+- **Whitespace & casing:** Leading and trailing whitespace is trimmed on every cell. `category`, `status`, `channel`, and `priority` are lowercased; `ticket_id` and `customer_id` preserve their original case.
+- **Plain-text safety:** Cells beginning with `=`, `+`, `-`, or `@` are stored verbatim as plain text and never evaluated or executed.
+- **Timestamps:** Parsed as ISO 8601 and stored in **UTC**. Timestamps without a timezone offset are assumed to be **`Asia/Kolkata` (`+05:30`)** and produce one dataset-level warning (`timestamps_without_timezone`) reporting the total count. Unparseable non-empty timestamps are flagged per row.
+
+### Row Retention & Validity Rule
+- **No silent drops:** Every parsed CSV row is stored as a `Ticket` record (with a surrogate `row_id` primary key and non-unique indexed `ticket_id`) along with `is_valid` and `validation_flags` (`[{code, affects}]`). Invalid rows are **never** silently dropped.
+- **Row validity:** `is_valid` is `false` **only** when a row carries at least one flag affecting `all_metrics`. Scope-specific flags exclude rows only from the affected metric scope(s).
+
+### Validation Checks (Closed List)
+
+| Check Code | Severity | Affects | Plain-Language Meaning |
+|---|---|---|---|
+| `missing_or_invalid_created_at` | `warning` | `all_metrics` | Ticket has a missing or unparseable `created_at` timestamp. |
+| `duplicate_ticket_id` | `warning` | `all_metrics` | Second or later occurrence of an already-seen `ticket_id` in the same upload (first occurrence stays valid). |
+| `unknown_category` | `warning` | `all_metrics` | `category` is not in `config/queues.yaml`. |
+| `first_response_before_created` | `warning` | `response_metrics` | `first_response_at` is earlier than `created_at`. |
+| `missing_first_response_on_resolved` | `warning` | `response_metrics` | `status` is `resolved` but `first_response_at` is missing or unparseable. |
+| `missing_resolved_at_on_resolved` | `warning` | `resolution_metrics` | `status` is `resolved` but `resolved_at` is missing or unparseable. |
+| `resolved_before_created` | `warning` | `resolution_metrics` | `resolved_at` is earlier than `created_at`. |
+| `implausible_duration` | `warning` | `resolution_metrics` | `resolved_at` is more than **180 days** (`IMPLAUSIBLE_DURATION_DAYS`) after `created_at`. |
+| `assignment_order_inconsistent` | `warning` | `triage_metrics` | `assigned_at` is before `created_at` or after a valid `first_response_at` (or unparseable). |
+| `missing_assignment` | `warning` | `triage_metrics` | Exactly one of `assigned_at` and `assigned_agent` is populated. |
+| `resolved_at_on_unresolved_status` | `warning` | `resolution_metrics` | `status` is `open` or `pending`, yet `resolved_at` is populated. |
+| `unknown_status` | `warning` | none (warning only) | `status` is outside `open`, `pending`, `resolved` (bucketed as unknown in metrics). |
+| `unknown_channel` | `warning` | none (warning only) | `channel` is outside `email`, `chat`, `web_form`, `whatsapp` (bucketed as unknown in metrics). |
+| `unknown_priority` | `warning` | none (warning only) | `priority` is outside `low`, `medium`, `high` (bucketed as unknown in metrics). |

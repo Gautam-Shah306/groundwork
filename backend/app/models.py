@@ -170,6 +170,7 @@ class ProblemBrief(Base):
 
 class Dataset(Base):
     __tablename__ = "datasets"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     engagement_id: Mapped[int] = mapped_column(
@@ -179,6 +180,7 @@ class Dataset(Base):
         index=True,
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     uploaded_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
     record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     period_start: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
@@ -195,12 +197,15 @@ class Dataset(Base):
 
 class Ticket(Base):
     __tablename__ = "tickets"
+    __table_args__ = {"sqlite_autoincrement": True}
 
-    ticket_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    row_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ticket_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     dataset_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("datasets.id", ondelete="CASCADE"),
-        primary_key=True,
+        nullable=False,
+        index=True,
     )
     engagement_id: Mapped[int] = mapped_column(
         Integer,
@@ -221,7 +226,7 @@ class Ticket(Base):
     reassignment_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     customer_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    validation_flags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    validation_flags: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
 
     engagement: Mapped[Engagement] = relationship(back_populates="tickets")
     dataset: Mapped[Dataset] = relationship(back_populates="tickets")

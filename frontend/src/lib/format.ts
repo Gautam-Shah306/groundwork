@@ -132,6 +132,8 @@ export function formatAuditSentence(entry: AuditLogEntry): string {
     delete: "deleted",
     approve: "approved",
     reject: "rejected",
+    upload: "uploaded",
+    load_sample: "loaded sample",
   };
   const verb = verbMap[entry.action] ?? entry.action;
 
@@ -149,7 +151,9 @@ export function formatAuditSentence(entry: AuditLogEntry): string {
       ? entry.details.name.trim()
       : typeof entry.details?.title === "string" && entry.details.title.trim()
         ? entry.details.title.trim()
-        : null;
+        : typeof entry.details?.filename === "string" && entry.details.filename.trim()
+          ? entry.details.filename.trim()
+          : null;
 
   if (detailName) {
     return `${entry.actor} ${verb} ${entityLabel} "${detailName}"`;

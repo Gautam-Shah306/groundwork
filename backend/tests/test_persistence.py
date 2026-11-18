@@ -449,3 +449,62 @@ def test_new_engagement_does_not_inherit_deleted_engagement_audit_history(app_cl
     assert activity[0]["entity_type"] == "engagement"
     assert activity[0]["entity_id"] == str(eng_c["id"])
     assert activity[0]["details"]["name"] == "Engagement C"
+
+
+def test_ticket_model_allows_duplicate_ticket_ids_and_same_ids_across_engagements(
+    app_client,
+) -> None:
+    from app.models import Dataset, Ticket
+
+    client, application = app_client
+    eng_a = _create_sample_engagement(client, "Engagement A")
+    eng_b = _create_sample_engagement(client, "Engagement B")
+
+    with application.state.session_factory() as db:
+        ds_a = Dataset(
+            engagement_id=eng_a["id"],
+            filename="a.csv",
+            record_count=2,
+            validation_report={},
+        )
+        ds_b = Dataset(
+            engagement_id=eng_b["id"],
+            filename="b.csv",
+            record_count=1,
+            validation_report={},
+        )
+        db.add_all([ds_a, ds_b])
+        db.flush()
+
+        t1 = Ticket(
+            ticket_id="KL-000001",
+            engagement_id=eng_a["id"],
+            dataset_id=ds_a.id,
+            category="order_tracking",
+            status="resolved",
+            is_valid=True,
+            validation_flags=[],
+        )
+        t2 = Ticket(
+            ticket_id="KL-000001",
+            engagement_id=eng_a["id"],
+            dataset_id=ds_a.id,
+            category="order_tracking",
+            status="resolved",
+            is_valid=False,
+            validation_flags=[{"code": "duplicate_ticket_id", "affects": ["all_metrics"]}],
+        )
+        t3 = Ticket(
+            ticket_id="KL-000001",
+            engagement_id=eng_b["id"],
+            dataset_id=ds_b.id,
+            category="order_tracking",
+            status="resolved",
+            is_valid=True,
+            validation_flags=[],
+        )
+        db.add_all([t1, t2, t3])
+        db.commit()
+
+        assert len({t1.row_id, t2.row_id, t3.row_id}) == 3
+        assert t1.ticket_id == t2.ticket_id == t3.ticket_id == "KL-000001"

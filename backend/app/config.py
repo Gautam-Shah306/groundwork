@@ -85,6 +85,11 @@ class Settings(BaseSettings):
         return get_project_root() / "knowledge"
 
     @property
+    def resolved_data_dir(self) -> Path:
+        """Return the repo-level data directory both natively and in Docker."""
+        return get_project_root() / "data"
+
+    @property
     def cors_origin_list(self) -> list[str]:
         """Parse comma-separated CORS origins into a clean list."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

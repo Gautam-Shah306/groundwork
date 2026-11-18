@@ -71,9 +71,9 @@ export const NAV_ITEMS: NavItemConfig[] = [
     group: "stages",
     groupLabel: "Stages",
     eyebrow: "Stage 02 · Diagnose",
-    emptyTitle: "No operational dataset uploaded",
+    emptyTitle: "No engagement selected",
     emptyDescription:
-      "Upload a synthetic support-ticket CSV to validate data quality, calculate deterministic operational metrics, and examine bottlenecks.",
+      "Select or create an engagement in Workspace before uploading and validating a support-ticket CSV dataset.",
     icon: Activity,
   },
   {

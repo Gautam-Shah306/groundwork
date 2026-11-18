@@ -10,10 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.models import (
     AuditLog,
     BriefSource,
+    Dataset,
     Engagement,
     EngagementStage,
     InterviewNote,
     ProblemBrief,
+    Ticket,
 )
 
 
@@ -243,3 +245,90 @@ class AuditLogResponse(BaseModel):
             details=dict(entry.details),
             created_at=entry.created_at,
         )
+
+
+class DatasetResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    engagement_id: int
+    filename: str
+    is_sample: bool
+    is_active: bool
+    uploaded_at: datetime
+    record_count: int
+    period_start: datetime | None
+    period_end: datetime | None
+    validation_report: dict[str, Any]
+
+    @classmethod
+    def from_orm_model(cls, dataset: Dataset, *, is_active: bool) -> DatasetResponse:
+        return cls(
+            id=dataset.id,
+            engagement_id=dataset.engagement_id,
+            filename=dataset.filename,
+            is_sample=dataset.is_sample,
+            is_active=is_active,
+            uploaded_at=dataset.uploaded_at,
+            record_count=dataset.record_count,
+            period_start=dataset.period_start,
+            period_end=dataset.period_end,
+            validation_report=dict(dataset.validation_report),
+        )
+
+
+class TicketRowResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    row_id: int
+    ticket_id: str
+    engagement_id: int
+    dataset_id: int
+    created_at: datetime | None
+    assigned_at: datetime | None
+    first_response_at: datetime | None
+    resolved_at: datetime | None
+    category: str | None
+    priority: str | None
+    queue: str | None
+    assigned_agent: str | None
+    status: str | None
+    channel: str | None
+    reassignment_count: int
+    customer_id: str | None
+    is_valid: bool
+    validation_flags: list[dict[str, Any]]
+
+    @classmethod
+    def from_orm_model(cls, ticket: Ticket) -> TicketRowResponse:
+        return cls(
+            row_id=ticket.row_id,
+            ticket_id=ticket.ticket_id,
+            engagement_id=ticket.engagement_id,
+            dataset_id=ticket.dataset_id,
+            created_at=ticket.created_at,
+            assigned_at=ticket.assigned_at,
+            first_response_at=ticket.first_response_at,
+            resolved_at=ticket.resolved_at,
+            category=ticket.category,
+            priority=ticket.priority,
+            queue=ticket.queue,
+            assigned_agent=ticket.assigned_agent,
+            status=ticket.status,
+            channel=ticket.channel,
+            reassignment_count=ticket.reassignment_count,
+            customer_id=ticket.customer_id,
+            is_valid=ticket.is_valid,
+            validation_flags=list(ticket.validation_flags),
+        )
+
+
+class DatasetRowsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: int
+    flag: str | None
+    page: int
+    page_size: int
+    total: int
+    items: list[TicketRowResponse]
