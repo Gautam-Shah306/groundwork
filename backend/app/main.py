@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.activity import router as activity_router
+from app.api.assistant import mark_stale_running_runs_failed, router as assistant_router
 from app.api.brief import router as brief_router
 from app.api.datasets import router as datasets_router
 from app.api.diagnostics import router as diagnostics_router
@@ -27,10 +28,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         init_db(engine)
-        if resolved_settings.seed_on_start:
-            with session_factory() as session:
+        with session_factory() as session:
+            mark_stale_running_runs_failed(session)
+            if resolved_settings.seed_on_start:
                 seed_demo_data(session)
         yield
+        for thread in getattr(_app.state, "assistant_threads", []):
+            thread.join(timeout=2.0)
         engine.dispose()
 
     application = FastAPI(
@@ -42,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.settings = settings
     application.state.engine = engine
     application.state.session_factory = session_factory
+    application.state.assistant_threads = []
 
     application.add_middleware(
         CORSMiddleware,
@@ -57,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(activity_router)
     application.include_router(datasets_router)
     application.include_router(diagnostics_router)
+    application.include_router(assistant_router)
     return application
 
 

@@ -64,6 +64,18 @@ class ProposalStatus(str, enum.Enum):
     rejected = "rejected"
 
 
+class AgentRunStatus(str, enum.Enum):
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class AnswerStatus(str, enum.Enum):
+    structured = "structured"
+    unstructured = "unstructured"
+    none = "none"
+
+
 class Base(DeclarativeBase):
     """Declarative base for all Groundwork tables."""
 
@@ -123,6 +135,11 @@ class Engagement(Base):
         passive_deletes=True,
     )
     pilot_simulations: Mapped[list[PilotSimulation]] = relationship(
+        back_populates="engagement",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    agent_runs: Mapped[list[AgentRun]] = relationship(
         back_populates="engagement",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -332,3 +349,47 @@ class PilotSimulation(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
 
     engagement: Mapped[Engagement] = relationship(back_populates="pilot_simulations")
+
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Intentionally NOT a cascading FK so deleting a Dataset retains its historical runs.
+    dataset_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[AgentRunStatus] = mapped_column(
+        SAEnum(AgentRunStatus, native_enum=False),
+        nullable=False,
+        default=AgentRunStatus.running,
+    )
+    answer_status: Mapped[AnswerStatus] = mapped_column(
+        SAEnum(AnswerStatus, native_enum=False),
+        nullable=False,
+        default=AnswerStatus.none,
+    )
+    answer_blocks: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    tool_trace: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    model: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    round_trips: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    engagement: Mapped[Engagement] = relationship(back_populates="agent_runs")

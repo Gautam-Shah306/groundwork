@@ -8,6 +8,7 @@ import {
   Database,
   Loader2,
 } from "lucide-react";
+import { AssistantPanel } from "../components/diagnostics/AssistantPanel";
 import { DatasetOverview } from "../components/diagnostics/DatasetOverview";
 import { DiagnosticsAnalysis } from "../components/diagnostics/DiagnosticsAnalysis";
 import { RowDrilldown } from "../components/diagnostics/RowDrilldown";
@@ -445,120 +446,127 @@ export function DiagnosticsPage() {
           />
         </Card>
       ) : (
-        <div className="space-y-6">
-          <nav
-            aria-label="Diagnostics sections"
-            className="flex flex-wrap items-center gap-2 border-b border-border pb-3 text-[12px]"
-          >
-            {[
-              { href: "#section-data", label: "Data" },
-              { href: "#section-kpis", label: "KPIs" },
-              { href: "#section-charts", label: "Charts" },
-              { href: "#section-findings", label: "Findings" },
-              { href: "#section-questions", label: "Questions" },
-            ].map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-control border border-border bg-surface px-3 py-1 font-medium text-ink hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+          <div className="min-w-0 flex-1 space-y-6">
+            <nav
+              aria-label="Diagnostics sections"
+              className="flex flex-wrap items-center gap-2 border-b border-border pb-3 text-[12px]"
+            >
+              {[
+                { href: "#section-data", label: "Data" },
+                { href: "#section-kpis", label: "KPIs" },
+                { href: "#section-charts", label: "Charts" },
+                { href: "#section-findings", label: "Findings" },
+                { href: "#section-questions", label: "Questions" },
+              ].map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-control border border-border bg-surface px-3 py-1 font-medium text-ink hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
 
-          <div id="section-data" className="space-y-6">
-            {selectedDataset.is_sample && <SyntheticDataNotice />}
+            <div id="section-data" className="space-y-6">
+              {selectedDataset.is_sample && <SyntheticDataNotice />}
 
-            <DatasetOverview
-              datasets={datasets}
-              selectedDataset={selectedDataset}
-              confirmDelete={confirmDelete}
-              deleting={deleting}
-              onSelectDataset={(id) => {
-                setSelectedDatasetId(id);
-                setDrilldownCheck(null);
-                setDrilldownData(null);
-                setConfirmDelete(false);
-              }}
-              onRequestDelete={() => setConfirmDelete(true)}
-              onCancelDelete={() => setConfirmDelete(false)}
-              onConfirmDelete={() => void handleConfirmDelete()}
-            />
-
-            {selectedDataset.validation_report && (
-              <ValidationSummary
-                report={selectedDataset.validation_report}
-                showPassedChecks={showPassedChecks}
-                expandedChecks={expandedChecks}
-                onToggleShowPassed={setShowPassedChecks}
-                onToggleExamples={(code) =>
-                  setExpandedChecks((prev) => ({
-                    ...prev,
-                    [code]: !prev[code],
-                  }))
-                }
-                onSelectCheck={(check) => {
-                  setDrilldownCheck(check);
-                  setDrilldownPage(1);
-                  setDrilldownData(null);
-                  setDrilldownError(null);
-                }}
-              />
-            )}
-
-            {drilldownCheck && (
-              <RowDrilldown
-                check={drilldownCheck}
-                page={drilldownPage}
-                data={drilldownData}
-                loading={drilldownLoading}
-                error={drilldownError}
-                onClose={() => {
+              <DatasetOverview
+                datasets={datasets}
+                selectedDataset={selectedDataset}
+                confirmDelete={confirmDelete}
+                deleting={deleting}
+                onSelectDataset={(id) => {
+                  setSelectedDatasetId(id);
                   setDrilldownCheck(null);
                   setDrilldownData(null);
-                  setDrilldownError(null);
+                  setConfirmDelete(false);
                 }}
-                onRetry={() =>
-                  void loadDrilldownRows(
-                    activeEngagement.id,
-                    selectedDataset.id,
-                    drilldownCheck.code,
-                    drilldownPage
-                  )
-                }
-                onPageChange={setDrilldownPage}
+                onRequestDelete={() => setConfirmDelete(true)}
+                onCancelDelete={() => setConfirmDelete(false)}
+                onConfirmDelete={() => void handleConfirmDelete()}
               />
-            )}
+
+              {selectedDataset.validation_report && (
+                <ValidationSummary
+                  report={selectedDataset.validation_report}
+                  showPassedChecks={showPassedChecks}
+                  expandedChecks={expandedChecks}
+                  onToggleShowPassed={setShowPassedChecks}
+                  onToggleExamples={(code) =>
+                    setExpandedChecks((prev) => ({
+                      ...prev,
+                      [code]: !prev[code],
+                    }))
+                  }
+                  onSelectCheck={(check) => {
+                    setDrilldownCheck(check);
+                    setDrilldownPage(1);
+                    setDrilldownData(null);
+                    setDrilldownError(null);
+                  }}
+                />
+              )}
+
+              {drilldownCheck && (
+                <RowDrilldown
+                  check={drilldownCheck}
+                  page={drilldownPage}
+                  data={drilldownData}
+                  loading={drilldownLoading}
+                  error={drilldownError}
+                  onClose={() => {
+                    setDrilldownCheck(null);
+                    setDrilldownData(null);
+                    setDrilldownError(null);
+                  }}
+                  onRetry={() =>
+                    void loadDrilldownRows(
+                      activeEngagement.id,
+                      selectedDataset.id,
+                      drilldownCheck.code,
+                      drilldownPage
+                    )
+                  }
+                  onPageChange={setDrilldownPage}
+                />
+              )}
+            </div>
+
+            <DiagnosticsAnalysis
+              engagementId={activeEngagement.id}
+              datasetId={selectedDataset.id}
+            />
+
+            <Card
+              title="Upload new dataset"
+              description="Upload another CSV export or reload the synthetic sample dataset."
+              headerAction={
+                <Database
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-muted"
+                  aria-hidden="true"
+                />
+              }
+            >
+              <UploadPanel
+                compact={true}
+                uploading={uploading}
+                uploadPhaseIndex={uploadPhaseIndex}
+                selectedFile={selectedFile}
+                uploadError={uploadError}
+                onUploadFile={(file) => void handleUploadFile(file)}
+                onLoadSample={() => void handleSampleLoad()}
+              />
+            </Card>
           </div>
 
-          <DiagnosticsAnalysis
+          <AssistantPanel
             engagementId={activeEngagement.id}
             datasetId={selectedDataset.id}
           />
-
-          <Card
-            title="Upload new dataset"
-            description="Upload another CSV export or reload the synthetic sample dataset."
-            headerAction={
-              <Database
-                size={16}
-                strokeWidth={1.75}
-                className="text-muted"
-                aria-hidden="true"
-              />
-            }
-          >
-            <UploadPanel
-              compact={true}
-              uploading={uploading}
-              uploadPhaseIndex={uploadPhaseIndex}
-              selectedFile={selectedFile}
-              uploadError={uploadError}
-              onUploadFile={(file) => void handleUploadFile(file)}
-              onLoadSample={() => void handleSampleLoad()}
-            />
-          </Card>
         </div>
       )}
     </div>

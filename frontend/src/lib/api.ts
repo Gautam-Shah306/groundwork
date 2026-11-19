@@ -518,3 +518,198 @@ export async function fetchDiagnostics(
 
   return (await response.json()) as DiagnosticsResponse;
 }
+
+
+export interface AssistantToolError {
+  code: string;
+  message: string;
+}
+
+export interface AssistantToolTraceItem {
+  call_id: string;
+  tool: string;
+  args: Record<string, unknown>;
+  ok: boolean;
+  data: Record<string, unknown> | unknown[] | null;
+  error: AssistantToolError | null;
+  duration_ms: number;
+  truncated?: boolean;
+  original_row_count?: number | null;
+}
+
+export type AssistantBlockType =
+  | "finding"
+  | "hypothesis"
+  | "recommended_next_step"
+  | "clarifying_question"
+  | "limitation"
+  | "unverified";
+
+export interface AssistantBlock {
+  type: AssistantBlockType;
+  text: string;
+  evidence_call_ids: string[];
+}
+
+export interface AssistantWarning {
+  block_index: number;
+  code:
+    | "ungrounded_number"
+    | "number_only_in_uncited_call"
+    | "unsupported_finding"
+    | "causal_wording_in_finding";
+  message: string;
+  details: Record<string, unknown>;
+}
+
+export interface AssistantRunError {
+  code: string;
+  message: string;
+}
+
+export interface AssistantRun {
+  id: number;
+  engagement_id: number;
+  dataset_id: number;
+  question: string;
+  status: "running" | "completed" | "failed";
+  answer_status: "structured" | "unstructured" | "none";
+  answer_blocks: AssistantBlock[];
+  tool_trace: AssistantToolTraceItem[];
+  warnings: AssistantWarning[];
+  error: AssistantRunError | null;
+  model: string;
+  round_trips: number;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+}
+
+export interface CreateAssistantRunResult {
+  run_id: number;
+  status: string;
+}
+
+export class ApiRequestError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+
+  constructor(message: string, status: number, code: string | null = null) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function extractStructuredApiError(
+  response: Response,
+  fallback: string
+): Promise<ApiRequestError> {
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    if (
+      body.detail &&
+      typeof body.detail === "object" &&
+      !Array.isArray(body.detail)
+    ) {
+      const d = body.detail as { code?: unknown; message?: unknown };
+      const msg =
+        typeof d.message === "string" && d.message.trim()
+          ? d.message
+          : `${fallback} (HTTP ${response.status})`;
+      const code = typeof d.code === "string" ? d.code : null;
+      return new ApiRequestError(msg, response.status, code);
+    }
+    if (typeof body.detail === "string" && body.detail.trim()) {
+      return new ApiRequestError(body.detail, response.status, null);
+    }
+  } catch {
+    // Fall back when response body is not JSON.
+  }
+  return new ApiRequestError(
+    `${fallback} (HTTP ${response.status})`,
+    response.status,
+    null
+  );
+}
+
+export async function startAssistantRun(
+  engagementId: number,
+  question: string,
+  datasetId?: number
+): Promise<CreateAssistantRunResult> {
+  const payload: { question: string; dataset_id?: number } = { question };
+  if (datasetId !== undefined) {
+    payload.dataset_id = datasetId;
+  }
+
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/assistant/runs`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to start investigation"
+    );
+  }
+
+  return (await response.json()) as CreateAssistantRunResult;
+}
+
+export async function fetchAssistantRuns(
+  engagementId: number,
+  limit = 10,
+  signal?: AbortSignal
+): Promise<AssistantRun[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/assistant/runs?limit=${limit}`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to load previous investigations"
+    );
+  }
+
+  return (await response.json()) as AssistantRun[];
+}
+
+export async function fetchAssistantRun(
+  engagementId: number,
+  runId: number,
+  signal?: AbortSignal
+): Promise<AssistantRun> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/assistant/runs/${runId}`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to load investigation run"
+    );
+  }
+
+  return (await response.json()) as AssistantRun;
+}

@@ -112,3 +112,40 @@
 ### Anything surprising
 - Overall median FRT (`6.07 h`) and median triage time (`3.70 h`) on the sample dataset are slightly higher than the Prompt 3 generator's staffed-hours-only medians (`~5.36 h` / `3.43 h`) because the overall metrics include overnight-created tickets (`22:00–09:00 IST`, median FRT `9.24 h`), while `first_response_by_band` reproduces the exact planted afternoon (`4.79 h`) vs evening (`7.45 h`) medians and `triage_share_of_first_response` (`0.65`) matches the all-hours generator figure (`65.5%`).
 - `tsconfig.json`'s empty `files: []` project-reference root causes bare `npx tsc --noEmit` to exit 0 without checking `src/`; running `npx tsc -p tsconfig.app.json --noEmit` caught fixture type drift in `DiagnosticsAnalysis.test.tsx` immediately.
+
+
+## Prompt 6 — LLM Provider Layer, Analysis Tools, Investigation Agent, Grounding Checks & Diagnostics Assistant Panel (2026-11-18)
+
+### What was built
+- **Part 0 (Repair Invariants):**
+  - Updated `frontend/package.json` `"typecheck"` script to `tsc -p tsconfig.app.json --noEmit` and replaced bare `npx tsc --noEmit` instructions in `AGENTS.md` and `README.md` with `docker compose exec -T frontend npm run typecheck` (and `npm run typecheck` natively).
+  - Updated `docker-compose.yml` to pass `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES`, and `LLM_MAX_OUTPUT_TOKENS` into the backend container; added safe defaults (`30`, `2`, `1500`) to `.env.example` with no default for `LLM_MODEL`.
+  - Updated `backend/app/config.py` so `llm_model` defaults to `""` and `llm_configured` is `True` only when `llm_provider` is supported (`gemini`) AND both `llm_api_key` and `llm_model` are non-empty; updated `backend/tests/test_health.py` accordingly and verified `/api/health` never exposes keys or model names.
+- **Part B (Provider-Neutral LLM Layer — `backend/app/llm/`):**
+  - Added `google-genai>=1.0.0,<2.0.0` (installed `1.75.0`) to `backend/requirements.txt` and `backend/pyproject.toml`.
+  - Created `base.py` (neutral `LLMMessage`, `ToolSchema`, `ToolCall`, `LLMUsage`, `LLMResponse`, `LLMProvider`), `errors.py` (actionable error hierarchy with `scrub_secrets()` stripping keys/Bearer/auth headers), `gemini.py` (`GeminiProvider` translating Pydantic JSON schemas via `parameters_json_schema`, millisecond `HttpOptions` timeout, `max_output_tokens`, exponential-backoff retry only on `429`/transient `5xx`, never retrying auth or `4xx`), `factory.py` (`get_provider(settings)`), and `fake.py` (`FakeProvider` for tests, never env-selectable).
+  - Added 8 unit tests in `backend/tests/test_llm.py`.
+- **Part C (Deterministic Analysis Tools — `backend/app/agent/tools.py`):**
+  - Built extensible `ToolRegistry` and `ToolRunContext` binding `engagement_id` and `dataset` server-side (tools never accept dataset or engagement IDs), with strict `extra="forbid"` Pydantic argument models, sequential per-run `call_id`s (`c1`, `c2`...), structured errors (`ok=false`, never raising), 60-row table truncation (`truncated=true`, `original_row_count`), and zero row-level ticket data.
+  - Registered all 7 read-only analysis tools wrapping `backend/app/metrics` and `backend/app/findings` only: `get_ticket_summary`, `get_response_metrics`, `get_resolution_metrics`, `get_category_breakdown`, `get_agent_workload`, `get_backlog_analysis`, and `get_findings`.
+  - Added 13 unit tests in `backend/tests/test_agent_tools.py`.
+- **Part D (Agent Loop, System Prompt & Deterministic Grounding — `backend/app/agent/`):**
+  - Created `prompts.py` (`SYSTEM_PROMPT`, `BANNED_CAUSAL_PHRASES`, `REPAIR_PROMPT`), `grounding.py` (precision-aware numeric matching, percentage-of-fraction matching, small unitless integer & date/year filtering, citation checks, banned causal-wording checks, non-destructive warnings), and `loop.py` (`run_investigation` with max 6 round trips, max 10 tool calls, 60s overall timeout, incremental trace callback, one JSON repair retry, `unstructured` fallback, and strict outbound privacy boundary).
+  - Added 10 loop tests in `backend/tests/test_agent_loop.py` and 11 grounding tests in `backend/tests/test_grounding.py`.
+- **Part E (Run Persistence & Assistant API):**
+  - Added `AgentRun` ORM table in `backend/app/models.py` (cascades on `Engagement` delete, retains `dataset_id` on `Dataset` delete) and SQLite `PRAGMA busy_timeout=5000` in `backend/app/db.py`.
+  - Added `backend/app/api/assistant.py` (`POST /api/engagements/{id}/assistant/runs` returning `202`, `GET /runs?limit=10`, `GET /runs/{run_id}`), background worker thread with per-tool-call trace persistence, `AuditLog` (`actor="Demo operator"`, `action="assistant_question"`, no secrets), startup recovery marking stale `running` runs as `failed` (`interrupted`), and 12 API integration tests in `backend/tests/test_assistant_api.py`.
+- **Part F (Frontend Diagnostics Assistant Panel):**
+  - Extended `frontend/src/lib/api.ts` with Assistant types, `ApiRequestError`, `startAssistantRun`, `fetchAssistantRuns`, and `fetchAssistantRun`.
+  - Created `frontend/src/components/diagnostics/AssistantPanel.tsx` (collapsible right column on desktop, stacked below on tablet/mobile; muted accent header with AI-generated disclosure; not-configured banner disabling input; 4 starter chips; labelled 1,000-char textarea; 1s polling live activity list with expandable args/definition/n/exclusions; structured answer blocks mapped to shared `TypeLabel` / `StatusPill` with clickable evidence chips, grounding warnings, `"Unsupported statement"` markers, `"Unverified response"` handling, error recovery preserving question, and `"Previous investigations"` history list) and wired it into `DiagnosticsPage.tsx` only when a dataset is selected.
+  - Added 16 Vitest tests in `frontend/src/__tests__/AssistantPanel.test.tsx`.
+- **Part A (Documentation):** Created `docs/agent.md` and added the `"Assistant"` section to `README.md`.
+
+### Decisions made
+- **Dedicated background worker thread instead of Starlette `BackgroundTasks`:** Running the investigation loop in a daemon thread with its own SQLite session lets `POST /assistant/runs` return `202` immediately (even inside FastAPI `TestClient`), enabling genuine live trace polling and `409 run_in_progress` verification while committing trace updates after every tool call.
+- **Non-cascading `AgentRun.dataset_id`:** Left `dataset_id` as an indexed integer rather than a foreign key so deleting a dataset retains historical `AgentRun` records and their original `dataset_id` while deleting an engagement still cascades via `engagement_id`.
+- **Provider factory dependency (`get_provider_factory`):** Resolving the provider inside the route handler after FastAPI body validation ensures invalid question lengths return `422` cleanly while missing configuration returns `409 llm_not_configured`, and tests inject `FakeProvider` via `app.dependency_overrides`.
+
+### Anything surprising
+- `google-genai` `1.75.0`'s `HttpOptions.timeout` expects milliseconds (`timeout_seconds * 1000`) and `FunctionDeclaration` natively accepts `parameters_json_schema`, making Pydantic JSON Schema translation direct and lossless.
+- During the live proxy check against Google's Gemini API, `/api/health` reported `llm_configured: true` and requests reached Gemini cleanly, returning HTTP `402 RESOURCE_EXHAUSTED` ("Your prepayment credits are depleted") on the configured project — confirming end-to-end provider wiring, non-retry 4xx error mapping, and zero API-key leakage in backend logs or persisted errors.

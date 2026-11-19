@@ -105,6 +105,19 @@ All operational tickets, evaluation tickets, policies, and ground-truth referenc
 
 All operational KPIs, distribution metrics, factor comparisons, and rule-based findings are computed deterministically from stored SQLite ticket rows via `GET /api/engagements/{id}/datasets/{dataset_id}/diagnostics` (read-only, configured in `config/metrics.yaml`). See [`docs/metrics.md`](./docs/metrics.md) for exact formulas, scopes, right-censoring caveats, illustrative SLA thresholds, and finding rules.
 
+## Assistant
+
+Groundwork includes a contextual **Investigation assistant** on the Diagnostics page backed by deterministic analysis tools and numeric grounding checks (see [`docs/agent.md`](./docs/agent.md)).
+
+- **Getting an API key:** Create a Gemini API key in Google AI Studio and select a supported Gemini model name (for example `gemini-2.5-flash`).
+- **Local configuration (`.env`):** Copy `.env.example` to `.env` and populate:
+  - `LLM_PROVIDER=gemini`
+  - `LLM_API_KEY=` _(your private key)_
+  - `LLM_MODEL=` _(required; no built-in default)_
+  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=1500`
+- **Never commit `.env` or your API key:** `.env` is git-ignored; never paste keys into docs, commits, issues, or logs.
+- **Behaviour without a key:** Groundwork starts and runs normally with `LLM_API_KEY` or `LLM_MODEL` unset. `/api/health` reports `llm_configured: false` (without exposing keys or model names), all deterministic Diagnostics screens work normally, and the Assistant panel displays setup guidance with input disabled.
+
 ## Run Tests
 
 ### Backend (pytest + coverage gate >= 90%)
@@ -122,7 +135,7 @@ Natively (with Node 20+):
 ```powershell
 Push-Location frontend
 npm run test
-npx tsc --noEmit
+npm run typecheck
 npm run build
 Pop-Location
 ```
@@ -131,7 +144,7 @@ Via Docker (with Compose running, when Node is not installed natively):
 
 ```powershell
 docker compose exec -T frontend npm run test
-docker compose exec -T frontend npx tsc --noEmit
+docker compose exec -T frontend npm run typecheck
 docker compose exec -T frontend npm run build
 ```
 

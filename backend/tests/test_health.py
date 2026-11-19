@@ -10,6 +10,7 @@ def test_health_returns_ok(tmp_path) -> None:
     settings = Settings(
         _env_file=None,
         llm_api_key="",
+        llm_model="",
         database_url=f"sqlite:///{tmp_path.as_posix()}/health_ok.db",
     )
     client = TestClient(create_app(settings))
@@ -28,6 +29,7 @@ def test_health_reports_llm_not_configured_when_key_empty(tmp_path) -> None:
     settings = Settings(
         _env_file=None,
         llm_api_key="   ",
+        llm_model="gemini-2.5-flash",
         database_url=f"sqlite:///{tmp_path.as_posix()}/health_empty.db",
     )
     client = TestClient(create_app(settings))
@@ -38,10 +40,37 @@ def test_health_reports_llm_not_configured_when_key_empty(tmp_path) -> None:
     assert response.json()["llm_configured"] is False
 
 
+def test_health_reports_llm_not_configured_when_model_empty_or_provider_unsupported(
+    tmp_path,
+) -> None:
+    no_model = Settings(
+        _env_file=None,
+        llm_provider="gemini",
+        llm_api_key="test-secret-key-123",
+        llm_model="  ",
+        database_url=f"sqlite:///{tmp_path.as_posix()}/health_nomodel.db",
+    )
+    assert TestClient(create_app(no_model)).get("/api/health").json()["llm_configured"] is False
+
+    bad_provider = Settings(
+        _env_file=None,
+        llm_provider="unsupported-vendor",
+        llm_api_key="test-secret-key-123",
+        llm_model="some-model",
+        database_url=f"sqlite:///{tmp_path.as_posix()}/health_badprov.db",
+    )
+    assert (
+        TestClient(create_app(bad_provider)).get("/api/health").json()["llm_configured"]
+        is False
+    )
+
+
 def test_health_reports_llm_configured_when_key_set(tmp_path) -> None:
     settings = Settings(
         _env_file=None,
+        llm_provider="gemini",
         llm_api_key="test-secret-key-123",
+        llm_model="gemini-2.5-flash",
         database_url=f"sqlite:///{tmp_path.as_posix()}/health_set.db",
     )
     client = TestClient(create_app(settings))
@@ -54,17 +83,18 @@ def test_health_reports_llm_configured_when_key_set(tmp_path) -> None:
 
 def test_health_never_exposes_api_key(tmp_path) -> None:
     secret_key = "super-secret-llm-api-key-98765"
+    secret_model = "private-model-id-54321"
     secret_db_url = "postgresql://admin:supersecretpass@db.internal:5432/groundwork"
     settings = Settings(
         _env_file=None,
         llm_api_key=secret_key,
+        llm_model=secret_model,
         database_url=secret_db_url,
     )
-    # Use a temporary SQLite DB for engine creation via state override if needed,
-    # while checking that health reports only scheme and never leaks secrets.
     app_settings = Settings(
         _env_file=None,
         llm_api_key=secret_key,
+        llm_model=secret_model,
         database_url=f"sqlite:///{tmp_path.as_posix()}/health_secret.db",
     )
     application = create_app(app_settings)
@@ -77,9 +107,11 @@ def test_health_never_exposes_api_key(tmp_path) -> None:
     body_text = response.text
     payload = response.json()
     assert secret_key not in body_text
+    assert secret_model not in body_text
     assert "supersecretpass" not in body_text
     assert "db.internal" not in body_text
     assert "llm_api_key" not in payload
+    assert "llm_model" not in payload
     assert payload["database_url_scheme"] == "postgresql"
 
 
@@ -88,6 +120,9 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
         "LLM_PROVIDER",
         "LLM_API_KEY",
         "LLM_MODEL",
+        "LLM_TIMEOUT_SECONDS",
+        "LLM_MAX_RETRIES",
+        "LLM_MAX_OUTPUT_TOKENS",
         "DATABASE_URL",
         "CORS_ORIGINS",
         "APP_VERSION",
@@ -100,7 +135,10 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
 
     assert settings.llm_provider == "gemini"
     assert settings.llm_api_key == ""
-    assert settings.llm_model == "gemini-2.5-flash"
+    assert settings.llm_model == ""
+    assert settings.llm_timeout_seconds == 30
+    assert settings.llm_max_retries == 2
+    assert settings.llm_max_output_tokens == 1500
     assert settings.database_url == "sqlite:///./data/groundwork.db"
     assert settings.llm_configured is False
     assert settings.database_url_scheme == "sqlite"
@@ -110,6 +148,7 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
 
 def test_app_starts_without_llm_key(monkeypatch, tmp_path) -> None:
     monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path.as_posix()}/startup_test.db")
     monkeypatch.chdir(tmp_path)
 

@@ -25,7 +25,7 @@ company ("Kora Living"). All data is synthetic and must be labelled as such.
 - Concrete frontend command pattern on this machine (when Node is not installed
   natively, with Compose running):
   - `docker compose exec -T frontend npm run test`
-  - `docker compose exec -T frontend npx tsc --noEmit`
+  - `docker compose exec -T frontend npm run typecheck`
   - `docker compose exec -T frontend npm run build`
 - Lockfile sync rule: whenever a frontend dependency is added or changed inside
   Docker, copy the updated `package-lock.json` back to the host

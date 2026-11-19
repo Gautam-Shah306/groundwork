@@ -40,6 +40,9 @@ def resolve_database_url(database_url: str) -> str:
     return f"{prefix}{resolved.as_posix()}"
 
 
+SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset({"gemini"})
+
+
 class Settings(BaseSettings):
     """Runtime settings with safe defaults so startup never requires an LLM key."""
 
@@ -53,15 +56,22 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     llm_provider: str = "gemini"
     llm_api_key: str = ""
-    llm_model: str = "gemini-2.5-flash"
+    llm_model: str = ""
+    llm_timeout_seconds: int = 30
+    llm_max_retries: int = 2
+    llm_max_output_tokens: int = 1500
     database_url: str = "sqlite:///./data/groundwork.db"
     cors_origins: str = "http://localhost:5173"
     seed_on_start: bool = False
 
     @property
     def llm_configured(self) -> bool:
-        """Return whether a non-empty LLM API key is configured."""
-        return bool(self.llm_api_key.strip())
+        """Return whether a supported LLM provider, API key, and model are all configured."""
+        return (
+            self.llm_provider.strip().lower() in SUPPORTED_LLM_PROVIDERS
+            and bool(self.llm_api_key.strip())
+            and bool(self.llm_model.strip())
+        )
 
     @property
     def database_url_scheme(self) -> str:
