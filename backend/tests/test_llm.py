@@ -268,3 +268,157 @@ def test_llm_errors_never_contain_api_key() -> None:
     rendered = f"{exc_info.value.code} {exc_info.value.message} {exc_info.value!s}"
     assert fake_secret not in rendered
     assert "Bearer " not in rendered
+
+
+def test_factory_returns_groq_adapter_for_groq_provider_case_insensitive() -> None:
+    from app.llm.groq import GroqProvider
+
+    for name in ("groq", "GROQ", " GroQ "):
+        settings = Settings(
+            _env_file=None,
+            llm_provider=name,
+            llm_api_key="gsk_key",
+            llm_model="openai/gpt-oss-20b",
+        )
+        prov = get_provider(settings)
+        assert isinstance(prov, GroqProvider)
+        assert prov.model_name == "openai/gpt-oss-20b"
+
+
+def test_health_llm_configured_true_for_groq_with_key_and_model() -> None:
+    settings = Settings(
+        _env_file=None,
+        llm_provider="groq",
+        llm_api_key="gsk_real_key",
+        llm_model="openai/gpt-oss-20b",
+    )
+    assert settings.llm_configured is True
+
+
+def test_http_402_maps_to_quota_exhausted_and_is_not_retried() -> None:
+    from app.llm.errors import LLMQuotaExhausted
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = genai_errors.APIError(
+        402, {"error": {"message": "Prepayment credits depleted."}}
+    )
+    sleeps: list[float] = []
+    provider = GeminiProvider(
+        api_key="test-key",
+        model="gemini-2.5-flash",
+        max_retries=2,
+        client=mock_client,
+        sleep_fn=sleeps.append,
+    )
+    with pytest.raises(LLMQuotaExhausted) as exc_info:
+        provider.generate(
+            system="sys",
+            messages=[LLMMessage(role="user", content="hi")],
+        )
+    assert exc_info.value.code == "llm_quota_exhausted"
+    assert mock_client.models.generate_content.call_count == 1
+    assert sleeps == []
+
+
+def test_gemini_resource_exhausted_maps_to_quota_exhausted() -> None:
+    from app.llm.errors import LLMQuotaExhausted
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = genai_errors.APIError(
+        429, {"error": {"status": "RESOURCE_EXHAUSTED", "message": "Resource exhausted"}}
+    )
+    sleeps: list[float] = []
+    provider = GeminiProvider(
+        api_key="test-key",
+        model="gemini-2.5-flash",
+        max_retries=2,
+        client=mock_client,
+        sleep_fn=sleeps.append,
+    )
+    with pytest.raises(LLMQuotaExhausted) as exc_info:
+        provider.generate(
+            system="sys",
+            messages=[LLMMessage(role="user", content="hi")],
+        )
+    assert exc_info.value.code == "llm_quota_exhausted"
+    assert mock_client.models.generate_content.call_count == 1
+    assert sleeps == []
+
+
+def test_all_llm_errors_never_contain_api_key_or_headers() -> None:
+    from app.llm.errors import (
+        LLMAuthError,
+        LLMError,
+        LLMModelNotFound,
+        LLMProviderError,
+        LLMQuotaExhausted,
+        LLMRateLimited,
+        LLMRequestTooLarge,
+        LLMTimeout,
+        LLMToolCallFailed,
+    )
+
+    secret = "AIzaSyTopSecret1234567890ABC"
+    groq_secret = "gsk_supersecretkeyvalue999888"
+    msg = f"Failed with {secret} and {groq_secret} headers: Authorization: Bearer {secret} and x-goog-api-key: {secret}"
+
+    for err_cls in (
+        LLMError,
+        LLMAuthError,
+        LLMModelNotFound,
+        LLMProviderError,
+        LLMQuotaExhausted,
+        LLMRateLimited,
+        LLMRequestTooLarge,
+        LLMTimeout,
+        LLMToolCallFailed,
+    ):
+        err = err_cls(msg, secrets=(secret, groq_secret))
+        rendered = f"{err.message} {err!s}"
+        assert secret not in rendered
+        assert groq_secret not in rendered
+        assert "Bearer " not in rendered
+
+
+def test_assistant_run_persists_quota_error_code_and_message() -> None:
+    from app.agent.loop import run_investigation
+    from app.llm.errors import LLMQuotaExhausted
+
+    mock_provider = MagicMock()
+    mock_provider.model_name = "test-model"
+    mock_provider.generate.side_effect = LLMQuotaExhausted("Project quota exceeded.")
+    registry = MagicMock()
+    registry.schemas.return_value = []
+    result = run_investigation(
+        question="Check queue",
+        provider=mock_provider,
+        registry=registry,
+    )
+    assert result.status == "failed"
+    assert result.error is not None
+    assert result.error["code"] == "llm_quota_exhausted"
+    assert "Project quota exceeded." in result.error["message"]
+
+
+def test_usage_column_added_to_existing_agent_runs_table_idempotently() -> None:
+    from sqlalchemy import create_engine
+    from app.db import ensure_agent_runs_usage_column
+
+    engine = create_engine("sqlite:///:memory:")
+    with engine.connect() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE agent_runs (id INTEGER PRIMARY KEY, question TEXT)"
+        )
+        conn.commit()
+
+    # First run: adds column
+    ensure_agent_runs_usage_column(engine)
+    with engine.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(agent_runs)").fetchall()]
+        assert "usage" in cols
+
+    # Second run: idempotent, must not raise
+    ensure_agent_runs_usage_column(engine)
+    with engine.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(agent_runs)").fetchall()]
+        assert "usage" in cols

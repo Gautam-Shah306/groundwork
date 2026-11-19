@@ -21,8 +21,11 @@ from app.llm.base import (
 )
 from app.llm.errors import (
     LLMAuthError,
+    LLMModelNotFound,
     LLMProviderError,
+    LLMQuotaExhausted,
     LLMRateLimited,
+    LLMRequestTooLarge,
     LLMTimeout,
 )
 
@@ -230,6 +233,15 @@ class GeminiProvider(LLMProvider):
             )
 
         status = _extract_status_code(exc)
+        msg = str(exc).lower()
+        if status == 402:
+            return LLMQuotaExhausted(secrets=secrets)
+        if status in (403, 429) and "resource_exhausted" in msg:
+            return LLMQuotaExhausted(secrets=secrets)
+        if status == 404:
+            return LLMModelNotFound(secrets=secrets)
+        if status == 413:
+            return LLMRequestTooLarge(secrets=secrets)
         if status in (401, 403):
             return LLMAuthError(
                 "LLM provider authentication failed. Check that LLM_API_KEY and LLM_MODEL in .env are valid.",
@@ -261,7 +273,11 @@ class GeminiProvider(LLMProvider):
         status = _extract_status_code(exc)
         if status is None:
             return False
-        # Retry ONLY on rate-limit (429) and transient server errors (5xx except 504 timeout)
+        if status == 402:
+            return False
+        if status in (403, 429) and "resource_exhausted" in str(exc).lower():
+            return False
+        # Retry ONLY on transient rate-limit (429) and transient server errors (5xx except 504 timeout)
         return status == 429 or (500 <= status < 600 and status != 504)
 
     def generate(

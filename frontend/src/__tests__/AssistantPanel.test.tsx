@@ -906,4 +906,209 @@ describe("AssistantPanel & Diagnostics integration", () => {
       )
     ).toBeInTheDocument();
   });
+
+  it("17. quota exhausted error shows the actionable message and keeps the question", async () => {
+    const user = userEvent.setup();
+    const failedRun = makeRun({
+      id: 50,
+      question: "Why are triage queues overflowing?",
+      status: "failed",
+      error: {
+        code: "llm_quota_exhausted",
+        message:
+          "The LLM provider reports that credits or the daily limit are exhausted for this API key's project. Check billing and quota, wait for the limit to reset, or use a different key.",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/health")) {
+        return jsonResponse({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: true,
+          database_url_scheme: "sqlite",
+        });
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs") && init?.method === "POST") {
+        return jsonResponse({ run_id: 50, status: "running" }, 202);
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs/50")) {
+        return jsonResponse(failedRun);
+      }
+      return jsonResponse([]);
+    });
+
+    render(<AssistantPanel engagementId={1} datasetId={10} />);
+
+    const textarea = screen.getByLabelText("Ask about this dataset");
+    await user.type(textarea, "Why are triage queues overflowing?");
+    await user.click(screen.getByRole("button", { name: "Investigate" }));
+
+    const errBox = await screen.findByTestId(
+      "assistant-run-error",
+      {},
+      { timeout: 3000 }
+    );
+    expect(
+      within(errBox).getByText(/credits or the daily limit are exhausted/i)
+    ).toBeInTheDocument();
+    expect(textarea).toHaveValue("Why are triage queues overflowing?");
+    expect(within(errBox).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("18. model not found error shows the actionable message with a retry action", async () => {
+    const user = userEvent.setup();
+    const failedRun = makeRun({
+      id: 51,
+      question: "Are first response metrics within SLA?",
+      status: "failed",
+      error: {
+        code: "llm_model_not_found",
+        message:
+          "The configured LLM_MODEL was not found by the provider. Check the model name in your environment settings.",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/health")) {
+        return jsonResponse({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: true,
+          database_url_scheme: "sqlite",
+        });
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs") && init?.method === "POST") {
+        return jsonResponse({ run_id: 51, status: "running" }, 202);
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs/51")) {
+        return jsonResponse(failedRun);
+      }
+      return jsonResponse([]);
+    });
+
+    render(<AssistantPanel engagementId={1} datasetId={10} />);
+
+    const textarea = screen.getByLabelText("Ask about this dataset");
+    await user.type(textarea, "Are first response metrics within SLA?");
+    await user.click(screen.getByRole("button", { name: "Investigate" }));
+
+    const errBox = await screen.findByTestId(
+      "assistant-run-error",
+      {},
+      { timeout: 3000 }
+    );
+    expect(
+      within(errBox).getByText(/configured LLM_MODEL was not found/i)
+    ).toBeInTheDocument();
+    const retryBtn = within(errBox).getByRole("button", { name: "Retry" });
+    expect(retryBtn).toBeInTheDocument();
+  });
+
+  it("19. request too large error shows the actionable message", async () => {
+    const user = userEvent.setup();
+    const failedRun = makeRun({
+      id: 52,
+      question: "Provide exhaustive summary of all categories",
+      status: "failed",
+      error: {
+        code: "llm_request_too_large",
+        message:
+          "The request exceeded the provider's size or token limit for this model.",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/health")) {
+        return jsonResponse({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: true,
+          database_url_scheme: "sqlite",
+        });
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs") && init?.method === "POST") {
+        return jsonResponse({ run_id: 52, status: "running" }, 202);
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs/52")) {
+        return jsonResponse(failedRun);
+      }
+      return jsonResponse([]);
+    });
+
+    render(<AssistantPanel engagementId={1} datasetId={10} />);
+
+    const textarea = screen.getByLabelText("Ask about this dataset");
+    await user.type(textarea, "Provide exhaustive summary of all categories");
+    await user.click(screen.getByRole("button", { name: "Investigate" }));
+
+    const errBox = await screen.findByTestId(
+      "assistant-run-error",
+      {},
+      { timeout: 3000 }
+    );
+    expect(
+      within(errBox).getByText(/request exceeded the provider's size or token limit/i)
+    ).toBeInTheDocument();
+  });
+
+  it("20. tool call failed error offers an immediate retry and keeps the question", async () => {
+    const user = userEvent.setup();
+    let postCount = 0;
+    const failedRun = makeRun({
+      id: 53,
+      question: "Which categories get reassigned most?",
+      status: "failed",
+      error: {
+        code: "llm_tool_call_failed",
+        message:
+          "The model produced an invalid tool call. Try the question again.",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/health")) {
+        return jsonResponse({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: true,
+          database_url_scheme: "sqlite",
+        });
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs") && init?.method === "POST") {
+        postCount += 1;
+        return jsonResponse({ run_id: 53, status: "running" }, 202);
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs/53")) {
+        return jsonResponse(failedRun);
+      }
+      return jsonResponse([]);
+    });
+
+    render(<AssistantPanel engagementId={1} datasetId={10} />);
+
+    const textarea = screen.getByLabelText("Ask about this dataset");
+    await user.type(textarea, "Which categories get reassigned most?");
+    await user.click(screen.getByRole("button", { name: "Investigate" }));
+
+    const errBox = await screen.findByTestId(
+      "assistant-run-error",
+      {},
+      { timeout: 3000 }
+    );
+    expect(
+      within(errBox).getByText(/model produced an invalid tool call/i)
+    ).toBeInTheDocument();
+    expect(textarea).toHaveValue("Which categories get reassigned most?");
+
+    const retryBtn = within(errBox).getByRole("button", { name: "Retry" });
+    await user.click(retryBtn);
+    await waitFor(() => {
+      expect(postCount).toBe(2);
+    });
+  });
 });

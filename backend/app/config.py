@@ -40,7 +40,7 @@ def resolve_database_url(database_url: str) -> str:
     return f"{prefix}{resolved.as_posix()}"
 
 
-SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset({"gemini"})
+SUPPORTED_LLM_PROVIDERS: frozenset[str] = frozenset({"gemini", "groq"})
 
 
 class Settings(BaseSettings):
@@ -59,7 +59,8 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_timeout_seconds: int = 30
     llm_max_retries: int = 2
-    llm_max_output_tokens: int = 1500
+    llm_max_output_tokens: int = 2500
+    llm_reasoning_effort: str = "low"
     database_url: str = "sqlite:///./data/groundwork.db"
     cors_origins: str = "http://localhost:5173"
     seed_on_start: bool = False

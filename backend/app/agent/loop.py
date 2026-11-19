@@ -17,7 +17,7 @@ from app.agent.grounding import (
     check_grounding,
 )
 from app.agent.prompts import REPAIR_PROMPT, SYSTEM_PROMPT
-from app.agent.tools import ToolRegistry, ToolResult
+from app.agent.tools import ToolError, ToolRegistry, ToolResult
 from app.llm.base import LLMMessage, LLMProvider
 from app.llm.errors import LLMError
 
@@ -42,6 +42,7 @@ class InvestigationResult(BaseModel):
     model: str = ""
     round_trips: int = 0
     duration_ms: int = 0
+    usage: dict[str, int] = Field(default_factory=dict)
 
 
 def _strip_code_fences(raw: str) -> str:
@@ -105,6 +106,27 @@ def run_investigation(
     schemas = registry.schemas()
     round_trips = 0
     model_used = provider.model_name or ""
+    accumulated_usage: dict[str, int] = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+    }
+
+    def _record_usage(u: Any) -> None:
+        if u is not None:
+            inp = getattr(u, "input_tokens", None)
+            out = getattr(u, "output_tokens", None)
+            tot = getattr(u, "total_tokens", None)
+            if inp is not None:
+                accumulated_usage["prompt_tokens"] += int(inp)
+            if out is not None:
+                accumulated_usage["completion_tokens"] += int(out)
+            if tot is not None:
+                accumulated_usage["total_tokens"] += int(tot)
+            elif inp is not None or out is not None:
+                accumulated_usage["total_tokens"] = (
+                    accumulated_usage["prompt_tokens"] + accumulated_usage["completion_tokens"]
+                )
 
     def _elapsed_ms() -> int:
         return int(round((clock() - started) * 1000))
@@ -129,6 +151,7 @@ def run_investigation(
             model=model_used,
             round_trips=round_trips,
             duration_ms=_elapsed_ms(),
+            usage=dict(accumulated_usage),
         )
 
     def _limit_result(reason: str) -> InvestigationResult:
@@ -147,6 +170,7 @@ def run_investigation(
             model=model_used,
             round_trips=round_trips,
             duration_ms=_elapsed_ms(),
+            usage=dict(accumulated_usage),
         )
 
     final_raw_text: str | None = None
@@ -163,6 +187,7 @@ def run_investigation(
                 tools=schemas,
                 max_output_tokens=max_output_tokens,
             )
+            _record_usage(response.usage)
         except LLMError as exc:
             return InvestigationResult(
                 status="failed",
@@ -174,6 +199,7 @@ def run_investigation(
                 model=model_used,
                 round_trips=round_trips,
                 duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
             )
         except Exception as exc:
             return InvestigationResult(
@@ -189,6 +215,7 @@ def run_investigation(
                 model=model_used,
                 round_trips=round_trips,
                 duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
             )
 
         if response.model:
@@ -213,7 +240,24 @@ def run_investigation(
                 if _timed_out():
                     return _timeout_result()
 
-                result = registry.execute(tc.name, tc.arguments)
+                call_id = tc.call_id or f"call_{len(tool_trace) + 1}"
+                if tc.arguments_invalid:
+                    result = ToolResult(
+                        call_id=call_id,
+                        tool=tc.name,
+                        args={},
+                        ok=False,
+                        error=ToolError(
+                            code="invalid_arguments",
+                            message=f"Invalid arguments for tool '{tc.name}': Malformed JSON arguments: {tc.raw_arguments}",
+                        ),
+                        duration_ms=0,
+                    )
+                else:
+                    result = registry.execute(tc.name, tc.arguments)
+                    if tc.call_id:
+                        result.call_id = tc.call_id
+
                 tool_trace.append(result)
                 if on_trace_update is not None:
                     on_trace_update(list(tool_trace))
@@ -222,6 +266,7 @@ def run_investigation(
                     LLMMessage(
                         role="tool",
                         tool_name=tc.name,
+                        tool_call_id=call_id,
                         tool_result=_tool_result_for_model(result),
                     )
                 )
@@ -258,6 +303,7 @@ def run_investigation(
                 tools=None,
                 max_output_tokens=max_output_tokens,
             )
+            _record_usage(repair_resp.usage)
         except LLMError as exc:
             return InvestigationResult(
                 status="failed",
@@ -269,6 +315,7 @@ def run_investigation(
                 model=model_used,
                 round_trips=round_trips,
                 duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
             )
         if repair_resp.model:
             model_used = repair_resp.model
@@ -291,6 +338,7 @@ def run_investigation(
                 model=model_used,
                 round_trips=round_trips,
                 duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
             )
 
     warnings = check_grounding(parsed.blocks, tool_trace)
@@ -304,4 +352,5 @@ def run_investigation(
         model=model_used,
         round_trips=round_trips,
         duration_ms=_elapsed_ms(),
+        usage=dict(accumulated_usage),
     )

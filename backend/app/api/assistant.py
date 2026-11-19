@@ -82,6 +82,7 @@ class AgentRunResponse(BaseModel):
     error: dict[str, Any] | None
     model: str
     round_trips: int
+    usage: dict[str, Any] | None = None
     started_at: datetime
     finished_at: datetime | None
     duration_ms: int | None
@@ -101,6 +102,7 @@ def _serialize_run(run: AgentRun) -> AgentRunResponse:
         error=dict(run.error) if isinstance(run.error, dict) else None,
         model=run.model,
         round_trips=run.round_trips,
+        usage=dict(run.usage) if isinstance(run.usage, dict) else None,
         started_at=run.started_at,
         finished_at=run.finished_at,
         duration_ms=run.duration_ms,
@@ -215,6 +217,7 @@ def _execute_run_in_background(
         if result.model:
             run.model = result.model
         run.round_trips = result.round_trips
+        run.usage = dict(result.usage) if result.usage else None
         run.finished_at = finished
         run.duration_ms = result.duration_ms
         db.commit()

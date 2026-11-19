@@ -21,7 +21,7 @@ Investigation Loop (backend/app/agent/loop.py)
    │  Single-turn bounded loop (max 6 round trips, max 10 tool calls, 60s overall timeout).
    │  Sends ONLY: SYSTEM_PROMPT + user question + aggregate tool outputs.
    ├──► LLM Provider Layer (backend/app/llm/)
-   │      base.py (neutral types) -> factory.py -> gemini.py (google-genai SDK)
+   │      base.py (neutral types) -> factory.py -> gemini.py (google-genai SDK) | groq.py (groq SDK)
    │      (fake.py used in automated tests only; never env-selectable)
    ├──► Analysis Tool Registry (backend/app/agent/tools.py)
    │      Pydantic-validated tools wrapping backend/app/metrics/ and backend/app/findings/ ONLY.
@@ -32,7 +32,8 @@ Investigation Loop (backend/app/agent/loop.py)
 ```
 
 ### Persistence & Startup Recovery
-- Table `agent_runs` (`AgentRun` in `backend/app/models.py`) stores `id`, `engagement_id`, `dataset_id`, `question`, `status` (`running | completed | failed`), `answer_status` (`structured | unstructured | none`), `answer_blocks`, `tool_trace`, `warnings`, `error`, `model`, `round_trips`, `started_at`, `finished_at`, and `duration_ms`.
+- Table `agent_runs` (`AgentRun` in `backend/app/models.py`) stores `id`, `engagement_id`, `dataset_id`, `question`, `status` (`running | completed | failed`), `answer_status` (`structured | unstructured | none`), `answer_blocks`, `tool_trace`, `warnings`, `usage`, `error`, `model`, `round_trips`, `started_at`, `finished_at`, and `duration_ms`.
+- At startup, an idempotent database check verifies the `usage` JSON column exists on `agent_runs`, executing `ALTER TABLE agent_runs ADD COLUMN usage JSON` if missing.
 - Deleting an engagement cascades and deletes its `agent_runs`. Deleting a dataset retains historical `agent_runs` and keeps their `dataset_id` reference intact.
 - On backend startup (`lifespan` in `backend/app/main.py`), any `AgentRun` still marked `running` is transitioned to `status="failed"` with error code `interrupted`.
 
@@ -96,7 +97,34 @@ The agent's final response must be JSON matching:
 
 ---
 
-## 5. Limits & Error Codes
+## 5. Providers & Execution Nuances
+
+Groundwork supports two production LLM providers via `LLM_PROVIDER`:
+- **`gemini` (Google Gemini):** Uses the `google-genai` SDK (`GeminiProvider`). Function declarations map via Pydantic schemas.
+- **`groq` (Groq):** Uses the official `groq` SDK (`GroqProvider`) implementing the OpenAI chat completion schema.
+
+### Reasoning Model Handling (`openai/gpt-oss-20b`)
+- When the model name begins with `openai/gpt-oss`, Groq receives `reasoning_effort="low"` (configurable via `LLM_REASONING_EFFORT`, default `low`).
+- The generation token cap is passed via `max_completion_tokens` rather than `max_tokens` because internal reasoning tokens consume output token budget. `LLM_MAX_OUTPUT_TOKENS` defaults to `2500` to accommodate this budget.
+- **Strict Reasoning Scrubbing:** Any internal chain-of-thought (`reasoning` or `reasoning_content` fields in SDK messages) is completely ignored. It is never included in `response.text`, never persisted to `agent_runs`, never logged, and never shown in the UI.
+
+### Token Usage Tracking
+- Each generation round trip parses token usage (`prompt_tokens`, `completion_tokens`, `total_tokens`) into `LLMUsage`.
+- The single-turn investigation loop sums token counts across all turns and records them on `AgentRun.usage` (persisted as JSON) and surfaces them in API responses.
+
+### Error Mapping & Retry Policies
+- **HTTP 402:** Mapped immediately to `llm_quota_exhausted` (never retried).
+- **Gemini 429/403 with `RESOURCE_EXHAUSTED`:** Mapped to `llm_quota_exhausted` (not retried).
+- **Groq 429 daily limit:** If error text indicates a per-day limit (e.g. `tokens per day` / `requests per day`), mapped to `llm_quota_exhausted` (not retried).
+- **Other 429s:** Evaluates `retry-after` header. If $\le 20$ seconds, waits and retries up to `LLM_MAX_RETRIES`. If $> 20$ seconds, fails immediately with `llm_rate_limited` without waiting.
+- **Groq 400 `tool_use_failed`:** Retried **once**; if failure recurs, raised as `llm_tool_call_failed`.
+- **404:** Mapped to `llm_model_not_found` (mentions `LLM_MODEL` setting, never prints secret model name).
+- **413:** Mapped to `llm_request_too_large`.
+- **401 / non-quota 403:** Mapped to `llm_auth_error` (never retried).
+
+---
+
+## 6. Limits & Error Codes
 
 ### Limits
 - **Question length:** `1`–`1,000` characters.
@@ -105,35 +133,39 @@ The agent's final response must be JSON matching:
 - **Overall run timeout:** `60` seconds.
 - **Per-request provider timeout:** `LLM_TIMEOUT_SECONDS` (default `30` s).
 - **Provider retries:** `LLM_MAX_RETRIES` (default `2`), exponential backoff on HTTP `429` and transient `5xx` only; never retries auth (`401`/`403`) or invalid-request (`400`) errors.
-- **Output cap:** `LLM_MAX_OUTPUT_TOKENS` (default `1500`).
+- **Output cap:** `LLM_MAX_OUTPUT_TOKENS` (default `2500`).
 - **Table truncation:** `60` rows per tool result table.
 
 ### Error Codes
 | Code | HTTP / Run Surface | Meaning |
 | --- | --- | --- |
 | `llm_not_configured` | `409 Conflict` on `POST` | `LLM_API_KEY` or `LLM_MODEL` missing/empty |
-| `unsupported_provider` | `409 Conflict` on `POST` | `LLM_PROVIDER` not in supported providers (`gemini`) |
+| `unsupported_provider` | `409 Conflict` on `POST` | `LLM_PROVIDER` not in supported providers (`gemini`, `groq`) |
 | `no_dataset` | `422 Unprocessable` on `POST` | Engagement has no uploaded or active dataset |
 | `run_in_progress` | `409 Conflict` on `POST` | Another run is already `running` for this engagement |
+| `llm_quota_exhausted` | Run `failed` | Project prepayment credits or daily quota limits exhausted |
+| `llm_model_not_found` | Run `failed` | Configured `LLM_MODEL` was not found by the provider |
+| `llm_request_too_large` | Run `failed` | Outbound request exceeded provider context or token limit |
+| `llm_tool_call_failed` | Run `failed` | Model produced an invalid function call after retry |
 | `llm_timeout` | Run `failed` | Provider request exceeded `LLM_TIMEOUT_SECONDS` |
-| `llm_rate_limited` | Run `failed` | Provider returned HTTP `429` after exhausting retries |
+| `llm_rate_limited` | Run `failed` | Provider rate limit exceeded (with retry-after $> 20$s or retries exhausted) |
 | `llm_auth_error` | Run `failed` | Provider rejected credentials (`401`/`403`) |
 | `llm_provider_error` | Run `failed` | Other upstream provider/network error |
 | `overall_timeout` | Run `failed` | Total investigation exceeded `60` s |
 | `interrupted` | Run `failed` (on startup) | Backend restarted while run was `running` |
-| `unknown_tool` / `invalid_arguments` | Tool trace (`ok=false`) | Model called an unknown tool or failed Pydantic validation |
+| `unknown_tool` / `invalid_arguments` | Tool trace (`ok=false`) | Model called an unknown tool or passed malformed JSON arguments |
 
 ---
 
-## 6. Privacy & Secret Hygiene
+## 7. Privacy & Secret Hygiene
 
 - **Outbound payload boundary:** Messages sent to the LLM provider contain **ONLY** the static `SYSTEM_PROMPT`, the user's question, and aggregate tool outputs (`MetricResult` summaries and rule-based findings). **No row-level ticket data** (`ticket_id`, `customer_id`, raw ticket rows), **no interview notes**, **no client statement**, and **no `data/answer_key.json`** are ever transmitted to the provider.
 - **Secret scrubbing:** `LLM_API_KEY` is never exposed in `/api/health`, `AuditLog`, `AgentRun.error`, API responses, or logs. Error messages pass through `scrub_secrets()` before being persisted or returned.
 
 ---
 
-## 7. Known Limitations
+## 8. Known Limitations
 
 1. **Single-turn only:** Each investigation run is independent with no multi-turn conversational memory across runs.
-2. **Single production provider adapter:** Only the `gemini` adapter (`google-genai`) is currently wired in `factory.py`; adding another provider requires implementing `LLMProvider` in `backend/app/llm/`.
+2. **Provider adapters:** Adapters exist for `gemini` and `groq`; adding another provider requires implementing `LLMProvider` in `backend/app/llm/`.
 3. **Grounding is not a semantic proof:** Deterministic grounding verifies that figures match cited tool outputs within precision tolerance and flags causal phrasing, but it cannot guarantee that a qualitative interpretation or causal hypothesis is operationally true — human review and client validation remain required.

@@ -123,6 +123,7 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
         "LLM_MAX_OUTPUT_TOKENS",
+        "LLM_REASONING_EFFORT",
         "DATABASE_URL",
         "CORS_ORIGINS",
         "APP_VERSION",
@@ -138,7 +139,8 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
     assert settings.llm_model == ""
     assert settings.llm_timeout_seconds == 30
     assert settings.llm_max_retries == 2
-    assert settings.llm_max_output_tokens == 1500
+    assert settings.llm_max_output_tokens == 2500
+    assert settings.llm_reasoning_effort == "low"
     assert settings.database_url == "sqlite:///./data/groundwork.db"
     assert settings.llm_configured is False
     assert settings.database_url_scheme == "sqlite"

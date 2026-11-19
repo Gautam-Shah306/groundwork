@@ -31,9 +31,21 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
+def ensure_agent_runs_usage_column(engine: Engine) -> None:
+    """Add the usage column to agent_runs if the table exists but the column is missing."""
+    with engine.connect() as conn:
+        if engine.dialect.name == "sqlite":
+            result = conn.exec_driver_sql("PRAGMA table_info(agent_runs)")
+            columns = [row[1] for row in result.fetchall()]
+            if columns and "usage" not in columns:
+                conn.exec_driver_sql("ALTER TABLE agent_runs ADD COLUMN usage JSON")
+                conn.commit()
+
+
 def init_db(engine: Engine) -> None:
     """Create all declared database tables if they do not yet exist."""
     Base.metadata.create_all(bind=engine)
+    ensure_agent_runs_usage_column(engine)
 
 
 def get_db(request: Request) -> Generator[Session, None, None]:

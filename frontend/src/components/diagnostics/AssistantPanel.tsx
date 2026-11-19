@@ -130,6 +130,26 @@ function formatRunError(code: string | null | undefined, message: string): strin
       return message || "The investigation timed out. Try a narrower question or retry.";
     case "llm_rate_limited":
       return message || "The LLM provider rate limit was reached. Wait a moment and retry.";
+    case "llm_quota_exhausted":
+      return (
+        message ||
+        "The LLM provider reports that credits or the daily limit are exhausted for this API key's project. Check billing and quota, wait for the limit to reset, or use a different key."
+      );
+    case "llm_model_not_found":
+      return (
+        message ||
+        "The configured LLM_MODEL was not found by the provider. Check the model name in your environment settings."
+      );
+    case "llm_request_too_large":
+      return (
+        message ||
+        "The request exceeded the provider's size or token limit for this model."
+      );
+    case "llm_tool_call_failed":
+      return (
+        message ||
+        "The model produced an invalid tool call. Try the question again."
+      );
     case "interrupted":
       return message || "This investigation was interrupted before completion. Retry to run it again.";
     case "run_in_progress":

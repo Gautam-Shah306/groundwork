@@ -109,12 +109,15 @@ All operational KPIs, distribution metrics, factor comparisons, and rule-based f
 
 Groundwork includes a contextual **Investigation assistant** on the Diagnostics page backed by deterministic analysis tools and numeric grounding checks (see [`docs/agent.md`](./docs/agent.md)).
 
-- **Getting an API key:** Create a Gemini API key in Google AI Studio and select a supported Gemini model name (for example `gemini-2.5-flash`).
+- **Provider choice (`LLM_PROVIDER`):** Supports `gemini` (Google Gemini) and `groq` (Groq API).
+- **Gemini setup:** Create an API key in Google AI Studio and configure `LLM_PROVIDER=gemini` and `LLM_MODEL=gemini-2.5-flash` in `.env`.
+- **Groq setup:** Create an API key in the Groq Console and configure `LLM_PROVIDER=groq` and `LLM_MODEL=openai/gpt-oss-20b` (or `llama-3.3-70b-versatile`) in `.env`.
+- **Free-tier limits:** Groq free-tier keys enforce strict tokens-per-minute (TPM), requests-per-minute (RPM), and tokens-per-day (TPD) limits. When testing or running investigations on free-tier keys, pause 15–20 seconds between queries to avoid short-window rate limits. If a per-day limit is reached, Groundwork surfaces `llm_quota_exhausted` and offers retry once the daily quota resets.
 - **Local configuration (`.env`):** Copy `.env.example` to `.env` and populate:
-  - `LLM_PROVIDER=gemini`
+  - `LLM_PROVIDER=gemini` or `LLM_PROVIDER=groq`
   - `LLM_API_KEY=` _(your private key)_
-  - `LLM_MODEL=` _(required; no built-in default)_
-  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=1500`
+  - `LLM_MODEL=` _(required; no built-in default, e.g. `openai/gpt-oss-20b` or `gemini-2.5-flash`)_
+  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=2500`, `LLM_REASONING_EFFORT=low`
 - **Never commit `.env` or your API key:** `.env` is git-ignored; never paste keys into docs, commits, issues, or logs.
 - **Behaviour without a key:** Groundwork starts and runs normally with `LLM_API_KEY` or `LLM_MODEL` unset. `/api/health` reports `llm_configured: false` (without exposing keys or model names), all deterministic Diagnostics screens work normally, and the Assistant panel displays setup guidance with input disabled.
 

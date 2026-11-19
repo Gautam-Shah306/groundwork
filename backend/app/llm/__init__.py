@@ -4,25 +4,35 @@ from app.llm.base import LLMMessage, LLMProvider, LLMResponse, LLMUsage, ToolCal
 from app.llm.errors import (
     LLMAuthError,
     LLMError,
+    LLMModelNotFound,
     LLMNotConfigured,
     LLMProviderError,
+    LLMQuotaExhausted,
     LLMRateLimited,
+    LLMRequestTooLarge,
     LLMTimeout,
+    LLMToolCallFailed,
     UnsupportedProvider,
     scrub_secrets,
 )
 from app.llm.factory import get_provider
+from app.llm.groq import GroqProvider
 
 __all__ = [
+    "GroqProvider",
     "LLMAuthError",
     "LLMError",
     "LLMMessage",
+    "LLMModelNotFound",
     "LLMNotConfigured",
     "LLMProvider",
     "LLMProviderError",
+    "LLMQuotaExhausted",
     "LLMRateLimited",
+    "LLMRequestTooLarge",
     "LLMResponse",
     "LLMTimeout",
+    "LLMToolCallFailed",
     "LLMUsage",
     "ToolCall",
     "ToolSchema",

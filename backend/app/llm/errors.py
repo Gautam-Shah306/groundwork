@@ -68,5 +68,67 @@ class LLMAuthError(LLMError):
     code = "llm_auth_error"
 
 
+class LLMQuotaExhausted(LLMError):
+    code = "llm_quota_exhausted"
+    DEFAULT_MESSAGE = (
+        "The LLM provider reports that credits or the daily limit are exhausted for this "
+        "API key's project. Check billing and quota, wait for the limit to reset, or use a different key."
+    )
+
+    def __init__(
+        self,
+        message: str = DEFAULT_MESSAGE,
+        *,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+    ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
+
+
+class LLMModelNotFound(LLMError):
+    code = "llm_model_not_found"
+    DEFAULT_MESSAGE = (
+        "The configured LLM_MODEL was not found by the provider. "
+        "Check the model name in your environment settings."
+    )
+
+    def __init__(
+        self,
+        message: str = DEFAULT_MESSAGE,
+        *,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+    ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
+
+
+class LLMRequestTooLarge(LLMError):
+    code = "llm_request_too_large"
+    DEFAULT_MESSAGE = "The request exceeded the provider's size or token limit for this model."
+
+    def __init__(
+        self,
+        message: str = DEFAULT_MESSAGE,
+        *,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+    ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
+
+
+class LLMToolCallFailed(LLMError):
+    code = "llm_tool_call_failed"
+    DEFAULT_MESSAGE = "The model produced an invalid tool call. Try the question again."
+
+    def __init__(
+        self,
+        message: str = DEFAULT_MESSAGE,
+        *,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+    ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
+
+
 class LLMProviderError(LLMError):
     code = "llm_provider_error"

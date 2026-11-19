@@ -25,6 +25,9 @@ class ToolCall(BaseModel):
 
     name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
+    call_id: str = ""
+    arguments_invalid: bool = False
+    raw_arguments: str = ""
 
 
 class LLMMessage(BaseModel):
@@ -36,6 +39,7 @@ class LLMMessage(BaseModel):
     content: str = ""
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_name: str | None = None
+    tool_call_id: str | None = None
     tool_result: dict[str, Any] | None = None
 
 

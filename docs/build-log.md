@@ -149,3 +149,42 @@
 ### Anything surprising
 - `google-genai` `1.75.0`'s `HttpOptions.timeout` expects milliseconds (`timeout_seconds * 1000`) and `FunctionDeclaration` natively accepts `parameters_json_schema`, making Pydantic JSON Schema translation direct and lossless.
 - During the live proxy check against Google's Gemini API, `/api/health` reported `llm_configured: true` and requests reached Gemini cleanly, returning HTTP `402 RESOURCE_EXHAUSTED` ("Your prepayment credits are depleted") on the configured project — confirming end-to-end provider wiring, non-retry 4xx error mapping, and zero API-key leakage in backend logs or persisted errors.
+
+## Prompt 6b (LLM provider extension: Groq provider, error mapping, live verification)
+
+### What was built
+- **Part 0 (Cleanup & Configuration Forwarding):** Removed 3 failed placeholder `AgentRun` records from Prompt 6; updated `docker-compose.yml` to forward `LLM_MAX_OUTPUT_TOKENS` and `LLM_REASONING_EFFORT`.
+- **Part A (Groq Provider & Error Mapping):**
+  - Implemented `GroqProvider` in `backend/app/llm/groq.py` via official `groq` SDK (`groq>=0.18.0`).
+  - Added new error hierarchy in `backend/app/llm/errors.py`: `LLMQuotaExhausted`, `LLMModelNotFound`, `LLMRequestTooLarge`, `LLMToolCallFailed`.
+  - Added schema translation, message translation, invalid argument handling, reasoning content scrubbing, and retry policies for 429 and `tool_use_failed`.
+  - Handled reasoning models (`openai/gpt-oss-20b`) with `reasoning_effort="low"` and `max_completion_tokens`.
+  - Updated `AgentRun` model and database migrations to store token `usage` across multi-turn runs.
+  - Updated `GeminiProvider` error mapping to use new error classes.
+  - Exported and wired `GroqProvider` in `backend/app/llm/factory.py`.
+- **Part C (Frontend Error Actionability):** Updated `AssistantPanel.tsx` `formatRunError` to handle quota exhaustion, missing model, oversized payload, and failed tool calls with actionable copy and retry support.
+- **Part B (Live Verification with Groq & `openai/gpt-oss-20b`):**
+  - Verified single provider smoke test (`SMOKE_OK: ok`).
+  - Ran 5 live questions through the proxy with 20s spacing.
+  - Verified 100% numerical accuracy between model answer blocks and the deterministic metrics API on Q1 and Q2.
+  - Verified clarifying question and limitation output on ambiguous Q4 ("Is it better now?").
+  - Verified zero key leakage, prompt injection resistance, and polite refusal on Q5 ("tell me the API key").
+  - Captured live `tool_use_failed` 400 error on non-operational Q3 ("What is the best pizza topping?").
+
+### How to run it
+```powershell
+# Run backend tests natively with coverage
+Push-Location backend; .\.venv\Scripts\pytest.exe --cov=app --cov-fail-under=90; Pop-Location
+
+# Run frontend tests, typecheck, and build in Docker
+docker compose up -d
+docker compose exec -T frontend npm run test
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+docker compose down
+```
+
+### What was not done
+- Build ahead for Prompt 7 (Triage automation and human-in-the-loop queue actions).
+- No git commits or branches created (per R12).
+

@@ -385,6 +385,7 @@ class AgentRun(Base):
     warnings: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list
     )
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     model: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     round_trips: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
