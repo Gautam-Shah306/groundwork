@@ -256,7 +256,7 @@ def test_brief_put_upserts_and_get_returns_it(app_client) -> None:
     )
     assert first_put.status_code == 200
     first_data = first_put.json()
-    assert first_data["source"] == "ai_draft"
+    assert first_data["source"] == "edited"
 
     second_put = client.put(
         f"/api/engagements/{eng['id']}/brief",
@@ -272,11 +272,11 @@ def test_brief_put_upserts_and_get_returns_it(app_client) -> None:
     second_data = second_put.json()
     assert second_data["id"] == first_data["id"]
     assert second_data["source"] == "edited"
-    assert second_data["sections"]["problem_statement"] == "Refined testable problem statement."
+    assert second_data["sections"]["problem_statement"]["text"] == "Refined testable problem statement."
 
     get_resp = client.get(f"/api/engagements/{eng['id']}/brief")
     assert get_resp.status_code == 200
-    assert get_resp.json()["sections"]["known_facts"] == ["Manual triage is used."]
+    assert get_resp.json()["sections"]["known_facts"][0]["text"] == "Manual triage is used."
 
 
 def test_audit_log_written_on_create_update_delete(app_client) -> None:

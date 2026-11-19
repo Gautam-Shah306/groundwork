@@ -188,10 +188,12 @@ export function OverviewPage() {
   const currentStageIndex = ENGAGEMENT_STAGES.findIndex(
     (item) => item.id === activeEngagement.stage
   );
+  const rawPs = brief?.sections?.problem_statement as unknown;
   const problemStatement =
-    typeof brief?.sections?.problem_statement === "string" &&
-    brief.sections.problem_statement.trim().length > 0
-      ? brief.sections.problem_statement.trim()
+    typeof rawPs === "string" && rawPs.trim().length > 0
+      ? rawPs.trim()
+      : rawPs && typeof rawPs === "object" && typeof (rawPs as { text?: unknown }).text === "string" && (rawPs as { text: string }).text.trim().length > 0
+      ? (rawPs as { text: string }).text.trim()
       : null;
 
   const suggestedSteps = RECOMMENDED_NEXT_STEPS[activeEngagement.stage];

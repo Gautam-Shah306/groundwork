@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Callable
 from typing import Any
@@ -183,11 +184,14 @@ def _parse_response(raw: Any, fallback_model: str) -> LLMResponse:
     )
 
     model_version = getattr(raw, "model", None) or fallback_model
+    finish_reason = getattr(first_choice, "finish_reason", None)
+    truncated = (finish_reason == "length")
     return LLMResponse(
         text=text_content.strip(),
         tool_calls=tool_calls,
         usage=usage,
         model=str(model_version),
+        truncated=truncated,
     )
 
 
@@ -248,6 +252,31 @@ def _is_tool_use_failed(exc: Exception) -> bool:
         if isinstance(err, dict) and err.get("code") == "tool_use_failed":
             return True
     return "tool_use_failed" in str(exc).lower()
+
+
+def _extract_attempted_tool(exc: Exception) -> str | None:
+    """Extract attempted tool name if exposed by the provider error, never generated text or reasoning."""
+    body = getattr(exc, "body", None)
+    candidates: list[str] = []
+    if isinstance(body, dict):
+        err = body.get("error", {})
+        if isinstance(err, dict):
+            failed_gen = err.get("failed_generation")
+            if isinstance(failed_gen, str):
+                candidates.append(failed_gen)
+            msg = err.get("message")
+            if isinstance(msg, str):
+                candidates.append(msg)
+    candidates.append(str(exc))
+
+    for text in candidates:
+        m = re.search(r'["\']name["\']\s*:\s*["\']([a-zA-Z0-9_-]+)["\']', text)
+        if m:
+            return m.group(1)
+        m = re.search(r'(?:tool|function)\s*[:= ]\s*["\']?([a-zA-Z0-9_-]+)["\']?', text, re.IGNORECASE)
+        if m:
+            return m.group(1)
+    return None
 
 
 class GroqProvider(LLMProvider):
@@ -389,7 +418,8 @@ class GroqProvider(LLMProvider):
                         tool_use_retried = True
                         self._sleep(self._base_backoff)
                         continue
-                    raise LLMToolCallFailed(secrets=secrets) from None
+                    attempted_tool = _extract_attempted_tool(exc)
+                    raise LLMToolCallFailed(attempted_tool=attempted_tool, secrets=secrets) from None
 
                 # Non-retriable client errors
                 if status in (401, 402, 404, 413):

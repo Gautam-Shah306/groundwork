@@ -144,6 +144,16 @@ class Engagement(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    brief_versions: Mapped[list[BriefVersion]] = relationship(
+        back_populates="engagement",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    discovery_analyses: Mapped[list[DiscoveryAnalysis]] = relationship(
+        back_populates="engagement",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class InterviewNote(Base):
@@ -183,6 +193,50 @@ class ProblemBrief(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
 
     engagement: Mapped[Engagement] = relationship(back_populates="brief")
+
+
+class BriefVersion(Base):
+    __tablename__ = "brief_versions"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sections: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)  # apply | edit | restore
+    saved_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+
+    engagement: Mapped[Engagement] = relationship(back_populates="brief_versions")
+
+
+class DiscoveryAnalysis(Base):
+    __tablename__ = "discovery_analyses"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    note_ids: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)  # completed | failed
+    draft: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    model: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    notes_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+    applied_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+
+    engagement: Mapped[Engagement] = relationship(back_populates="discovery_analyses")
 
 
 class Dataset(Base):

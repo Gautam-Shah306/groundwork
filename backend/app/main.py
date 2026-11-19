@@ -11,6 +11,7 @@ from app.api.assistant import mark_stale_running_runs_failed, router as assistan
 from app.api.brief import router as brief_router
 from app.api.datasets import router as datasets_router
 from app.api.diagnostics import router as diagnostics_router
+from app.api.discovery import router as discovery_router
 from app.api.engagements import router as engagements_router
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(activity_router)
     application.include_router(datasets_router)
     application.include_router(diagnostics_router)
+    application.include_router(discovery_router)
     application.include_router(assistant_router)
     return application
 

@@ -7,10 +7,13 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.discovery.schema import BriefSections
 from app.models import (
     AuditLog,
     BriefSource,
+    BriefVersion,
     Dataset,
+    DiscoveryAnalysis,
     Engagement,
     EngagementStage,
     InterviewNote,
@@ -197,7 +200,7 @@ class NoteResponse(BaseModel):
 class BriefUpsert(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sections: dict[str, Any] = Field(default_factory=dict)
+    sections: BriefSections
     source: BriefSource = Field(default=BriefSource.edited)
 
 
@@ -218,6 +221,62 @@ class BriefResponse(BaseModel):
             sections=dict(brief.sections),
             source=brief.source,
             updated_at=brief.updated_at,
+        )
+
+
+class BriefVersionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    engagement_id: int
+    sections: dict[str, Any]
+    source: str
+    reason: str
+    saved_at: datetime
+
+    @classmethod
+    def from_orm_model(cls, v: BriefVersion) -> BriefVersionResponse:
+        return cls(
+            id=v.id,
+            engagement_id=v.engagement_id,
+            sections=dict(v.sections),
+            source=v.source,
+            reason=v.reason,
+            saved_at=v.saved_at,
+        )
+
+
+class DiscoveryAnalysisResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    engagement_id: int
+    note_ids: list[int] | None
+    status: str
+    draft: dict[str, Any] | None
+    warnings: list[dict[str, Any]]
+    error: dict[str, Any] | None
+    model: str
+    usage: dict[str, Any] | None
+    notes_chars: int
+    created_at: datetime
+    applied_at: datetime | None
+
+    @classmethod
+    def from_orm_model(cls, a: DiscoveryAnalysis) -> DiscoveryAnalysisResponse:
+        return cls(
+            id=a.id,
+            engagement_id=a.engagement_id,
+            note_ids=list(a.note_ids) if a.note_ids is not None else None,
+            status=a.status,
+            draft=dict(a.draft) if a.draft is not None else None,
+            warnings=list(a.warnings) if a.warnings is not None else [],
+            error=dict(a.error) if a.error is not None else None,
+            model=a.model,
+            usage=dict(a.usage) if a.usage is not None else None,
+            notes_chars=a.notes_chars,
+            created_at=a.created_at,
+            applied_at=a.applied_at,
         )
 
 

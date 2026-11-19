@@ -5,6 +5,7 @@ import { EngagementProvider } from "./context/EngagementContext";
 import { NAV_ITEMS } from "./lib/navigation";
 import { DevComponentsPage } from "./pages/DevComponentsPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
+import { DiscoveryPage } from "./pages/DiscoveryPage";
 import { EngagementsPage } from "./pages/EngagementsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { StagePlaceholderPage } from "./pages/StagePlaceholderPage";
@@ -35,7 +36,8 @@ export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
     (item) =>
       item.id !== "overview" &&
       item.id !== "engagements" &&
-      item.id !== "diagnostics"
+      item.id !== "diagnostics" &&
+      item.id !== "discovery"
   );
 
   return (
@@ -44,6 +46,7 @@ export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
         <Route element={<AppShell />}>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/engagements" element={<EngagementsPage />} />
+          <Route path="/discovery" element={<DiscoveryPage />} />
           <Route path="/diagnostics" element={<DiagnosticsPage />} />
           {placeholderItems.map((item) => (
             <Route

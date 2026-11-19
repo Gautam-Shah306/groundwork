@@ -62,6 +62,7 @@ class LLMResponse(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     usage: LLMUsage = Field(default_factory=LLMUsage)
     model: str = ""
+    truncated: bool = False
 
 
 class LLMProvider(ABC):

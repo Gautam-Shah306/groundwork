@@ -167,11 +167,22 @@ def _parse_response(raw: Any, fallback_model: str) -> LLMResponse:
         total_tokens=getattr(usage_meta, "total_token_count", None) if usage_meta else None,
     )
     model_version = getattr(raw, "model_version", None) or fallback_model
+
+    candidates = getattr(raw, "candidates", None) or []
+    finish_reason = None
+    if candidates:
+        finish_reason = getattr(candidates[0], "finish_reason", None)
+    truncated = False
+    if finish_reason is not None:
+        fr_str = str(finish_reason).upper()
+        truncated = "MAX_TOKENS" in fr_str or fr_str == "LENGTH"
+
     return LLMResponse(
         text="".join(text_chunks).strip(),
         tool_calls=tool_calls,
         usage=usage,
         model=str(model_version),
+        truncated=truncated,
     )
 
 

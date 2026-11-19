@@ -90,6 +90,16 @@ All operational tickets, evaluation tickets, policies, and ground-truth referenc
   ```
   See [`docs/data-dictionary.md`](./docs/data-dictionary.md) for the complete schema and vocabularies.
 
+## Discovery Workspace
+
+The **Discovery** workspace transforms qualitative stakeholder interview notes into a structured, testable problem brief (see [`docs/discovery.md`](./docs/discovery.md)).
+
+- **Interview Notes:** Add and manage interview notes with automatic word counts and character tracking.
+- **AI-Assisted Analysis:** Select one or more notes (up to 30,000 characters) and run `POST /api/engagements/{id}/discovery/analyse` to extract themes, symptoms, impacts, hypotheses, known facts, and candidate KPIs.
+- **Deterministic Post-Processing:** Verifies source quotes against notes text, validates number claims, checks hypothesis hedging, bans causal language in problem statements, and restricts candidate KPIs to the 16 approved metrics in the Groundwork metrics registry.
+- **Version History & Safeguards:** Maintains up to 5 version snapshots per engagement. Applying an AI draft over manually edited briefs requires explicit confirmation (`confirm_replace: true`).
+- **Discovery Token Limit (`LLM_DISCOVERY_MAX_OUTPUT_TOKENS`):** Default `4000` tokens to support full structured brief generation across all 13 sections.
+
 ## Uploading Data
 
 1. Open **Diagnostics** in the workspace sidebar (with an engagement selected).

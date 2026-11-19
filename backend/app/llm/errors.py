@@ -116,9 +116,9 @@ class LLMRequestTooLarge(LLMError):
         super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
 
 
-class LLMToolCallFailed(LLMError):
-    code = "llm_tool_call_failed"
-    DEFAULT_MESSAGE = "The model produced an invalid tool call. Try the question again."
+class LLMOutputTruncated(LLMError):
+    code = "llm_output_truncated"
+    DEFAULT_MESSAGE = "The analysis was cut off. Shorten the notes or raise LLM_DISCOVERY_MAX_OUTPUT_TOKENS."
 
     def __init__(
         self,
@@ -127,6 +127,22 @@ class LLMToolCallFailed(LLMError):
         code: str | None = None,
         secrets: Sequence[str] = (),
     ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
+
+
+class LLMToolCallFailed(LLMError):
+    code = "llm_tool_call_failed"
+    DEFAULT_MESSAGE = "The model produced an invalid tool call. Try the question again."
+
+    def __init__(
+        self,
+        message: str = DEFAULT_MESSAGE,
+        *,
+        attempted_tool: str | None = None,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+    ) -> None:
+        self.attempted_tool = attempted_tool
         super().__init__(message or self.DEFAULT_MESSAGE, code=code, secrets=secrets)
 
 

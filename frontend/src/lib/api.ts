@@ -28,12 +28,112 @@ export interface EngagementCreateInput {
   is_synthetic?: boolean;
 }
 
+export interface InterviewNote {
+  id: number;
+  engagement_id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BriefItem {
+  id: string;
+  text: string;
+  source_quote?: string | null;
+  quote_verified?: boolean | null;
+  origin?: "ai" | "user" | "confirmed";
+  status?: "ai_draft" | "user_edited" | "confirmed";
+  flags?: string[];
+}
+
+export interface KnownFactItem extends BriefItem {
+  type: "client_statement" | "observed_fact";
+  source?: string;
+}
+
+export interface QuestionItem {
+  id: string;
+  question: string;
+  status: "open" | "asked" | "answered";
+  source_finding_id?: string | null;
+  answer?: string;
+  status_reason?: string;
+  flags?: string[];
+}
+
+export interface ProblemStatement {
+  text: string;
+  status?: "ai_draft" | "user_edited" | "confirmed";
+  flags?: string[];
+}
+
+export interface KpiCandidate {
+  id: string;
+  metric_id: string;
+  rationale: string;
+  baseline_value?: number | null;
+  status?: "ai_draft" | "user_edited" | "confirmed";
+  flags?: string[];
+}
+
+export interface BriefSections {
+  context?: string;
+  themes: BriefItem[];
+  stakeholders: BriefItem[];
+  workflow_steps: BriefItem[];
+  symptoms: BriefItem[];
+  impact: BriefItem[];
+  known_facts: KnownFactItem[];
+  hypotheses: BriefItem[];
+  assumptions: BriefItem[];
+  unknowns: BriefItem[];
+  follow_up_questions: QuestionItem[];
+  problem_statement: ProblemStatement;
+  candidate_kpis: KpiCandidate[];
+  [key: string]: unknown;
+}
+
 export interface ProblemBrief {
   id: number;
   engagement_id: number;
-  sections: Record<string, unknown>;
+  sections: BriefSections;
   source: "ai_draft" | "edited";
   updated_at: string;
+}
+
+export interface BriefVersion {
+  id: number;
+  engagement_id: number;
+  sections: BriefSections;
+  source: string;
+  reason: string;
+  saved_at: string;
+}
+
+export interface DiscoveryWarning {
+  code: string;
+  section?: string;
+  item_id?: string;
+  text?: string;
+  source_quote?: string;
+  metric_id?: string;
+  message: string;
+}
+
+export interface DiscoveryAnalysis {
+  id: number;
+  engagement_id: number;
+  note_ids: number[] | null;
+  status: "completed" | "failed";
+  draft: BriefSections | null;
+  warnings: DiscoveryWarning[];
+  error: { code: string; message: string; details?: Record<string, unknown> } | null;
+  model: string;
+  usage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } | null;
+  notes_chars: number;
+  created_at: string;
+  applied_at: string | null;
 }
 
 export interface AuditLogEntry {
@@ -712,4 +812,242 @@ export async function fetchAssistantRun(
   }
 
   return (await response.json()) as AssistantRun;
+}
+
+export async function fetchNotes(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<InterviewNote[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/notes`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load interview notes")
+    );
+  }
+
+  return (await response.json()) as InterviewNote[];
+}
+
+export async function createNote(
+  engagementId: number,
+  input: { title: string; content: string }
+): Promise<InterviewNote> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/notes`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(input),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to create interview note")
+    );
+  }
+
+  return (await response.json()) as InterviewNote;
+}
+
+export async function updateNote(
+  engagementId: number,
+  noteId: number,
+  input: { title?: string; content?: string }
+): Promise<InterviewNote> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/notes/${noteId}`),
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(input),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to update interview note")
+    );
+  }
+
+  return (await response.json()) as InterviewNote;
+}
+
+export async function deleteNote(
+  engagementId: number,
+  noteId: number
+): Promise<void> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/notes/${noteId}`),
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to delete interview note")
+    );
+  }
+}
+
+export async function updateBrief(
+  engagementId: number,
+  sections: BriefSections,
+  source = "edited"
+): Promise<ProblemBrief> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/brief`),
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ sections, source }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to save problem brief")
+    );
+  }
+
+  return (await response.json()) as ProblemBrief;
+}
+
+export async function fetchBriefVersions(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<BriefVersion[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/brief/versions`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load brief version history")
+    );
+  }
+
+  return (await response.json()) as BriefVersion[];
+}
+
+export async function restoreBriefVersion(
+  engagementId: number,
+  versionId: number
+): Promise<ProblemBrief> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/brief/versions/${versionId}/restore`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to restore brief version")
+    );
+  }
+
+  return (await response.json()) as ProblemBrief;
+}
+
+export async function runDiscoveryAnalysis(
+  engagementId: number,
+  noteIds?: number[]
+): Promise<DiscoveryAnalysis> {
+  const payload = noteIds && noteIds.length > 0 ? { note_ids: noteIds } : {};
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/discovery/analyse`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to run discovery analysis"
+    );
+  }
+
+  return (await response.json()) as DiscoveryAnalysis;
+}
+
+export async function fetchDiscoveryAnalyses(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<DiscoveryAnalysis[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/discovery/analyses`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractErrorMessage(response, "Unable to load discovery analyses")
+    );
+  }
+
+  return (await response.json()) as DiscoveryAnalysis[];
+}
+
+export async function applyDiscoveryAnalysis(
+  engagementId: number,
+  analysisId: number,
+  confirmReplace = false
+): Promise<ProblemBrief> {
+  const response = await fetch(
+    buildApiUrl(
+      `/api/engagements/${engagementId}/discovery/analyses/${analysisId}/apply`
+    ),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ confirm_replace: confirmReplace }),
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to apply discovery draft to problem brief"
+    );
+  }
+
+  return (await response.json()) as ProblemBrief;
 }

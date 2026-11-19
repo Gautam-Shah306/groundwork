@@ -498,3 +498,44 @@ def test_groq_timeout_maps_to_llm_timeout() -> None:
 
     assert exc_info.value.code == "llm_timeout"
     assert "22s" in exc_info.value.message
+
+
+def test_groq_adapter_sets_truncated_when_finish_reason_is_length() -> None:
+    mock_client = MagicMock()
+    first_choice_len = SimpleNamespace(
+        message=SimpleNamespace(content="partial output cut off", tool_calls=[]),
+        finish_reason="length",
+    )
+    raw_response_len = SimpleNamespace(
+        choices=[first_choice_len],
+        model="openai/gpt-oss-20b",
+        usage=SimpleNamespace(prompt_tokens=100, completion_tokens=50, total_tokens=150),
+    )
+    mock_client.chat.completions.create.return_value = raw_response_len
+
+    provider = GroqProvider(
+        api_key="gsk_synthetic_key_not_real",
+        model="openai/gpt-oss-20b",
+        client=mock_client,
+    )
+    res_truncated = provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="write a long text")],
+    )
+    assert res_truncated.truncated is True
+
+    # Test normal finish reason
+    first_choice_stop = SimpleNamespace(
+        message=SimpleNamespace(content="complete text", tool_calls=[]),
+        finish_reason="stop",
+    )
+    mock_client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[first_choice_stop],
+        model="openai/gpt-oss-20b",
+        usage=SimpleNamespace(prompt_tokens=100, completion_tokens=50, total_tokens=150),
+    )
+    res_normal = provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="write normal")],
+    )
+    assert res_normal.truncated is False

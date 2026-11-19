@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from collections.abc import Callable
@@ -19,7 +20,9 @@ from app.agent.grounding import (
 from app.agent.prompts import REPAIR_PROMPT, SYSTEM_PROMPT
 from app.agent.tools import ToolError, ToolRegistry, ToolResult
 from app.llm.base import LLMMessage, LLMProvider
-from app.llm.errors import LLMError
+from app.llm.errors import LLMError, LLMToolCallFailed
+
+logger = logging.getLogger(__name__)
 
 MAX_ROUND_TRIPS = 6
 MAX_TOOL_CALLS = 10
@@ -38,7 +41,7 @@ class InvestigationResult(BaseModel):
     answer_blocks: list[dict[str, Any]] = Field(default_factory=list)
     tool_trace: list[ToolResult] = Field(default_factory=list)
     warnings: list[GroundingWarning] = Field(default_factory=list)
-    error: dict[str, str] | None = None
+    error: dict[str, Any] | None = None
     model: str = ""
     round_trips: int = 0
     duration_ms: int = 0
@@ -174,6 +177,7 @@ def run_investigation(
         )
 
     final_raw_text: str | None = None
+    provider_to_local_id: dict[str, str] = {}
 
     while round_trips < max_round_trips:
         if _timed_out():
@@ -188,6 +192,23 @@ def run_investigation(
                 max_output_tokens=max_output_tokens,
             )
             _record_usage(response.usage)
+        except LLMToolCallFailed as exc:
+            err_dict: dict[str, Any] = {"code": exc.code, "message": exc.message}
+            if exc.attempted_tool:
+                logger.warning("LLM tool call failed: attempted_tool=%s", exc.attempted_tool)
+                err_dict["details"] = {"attempted_tool": exc.attempted_tool}
+            return InvestigationResult(
+                status="failed",
+                answer_status="none",
+                answer_blocks=[],
+                tool_trace=tool_trace,
+                warnings=[],
+                error=err_dict,
+                model=model_used,
+                round_trips=round_trips,
+                duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
+            )
         except LLMError as exc:
             return InvestigationResult(
                 status="failed",
@@ -240,10 +261,16 @@ def run_investigation(
                 if _timed_out():
                     return _timeout_result()
 
-                call_id = tc.call_id or f"call_{len(tool_trace) + 1}"
+                seq_num = len(tool_trace) + 1
+                local_call_id = f"c{seq_num}"
+                provider_call_id = tc.call_id or local_call_id
+                if tc.call_id:
+                    provider_to_local_id[tc.call_id] = local_call_id
+                provider_to_local_id[local_call_id] = local_call_id
+
                 if tc.arguments_invalid:
                     result = ToolResult(
-                        call_id=call_id,
+                        call_id=local_call_id,
                         tool=tc.name,
                         args={},
                         ok=False,
@@ -255,8 +282,7 @@ def run_investigation(
                     )
                 else:
                     result = registry.execute(tc.name, tc.arguments)
-                    if tc.call_id:
-                        result.call_id = tc.call_id
+                    result.call_id = local_call_id
 
                 tool_trace.append(result)
                 if on_trace_update is not None:
@@ -266,7 +292,7 @@ def run_investigation(
                     LLMMessage(
                         role="tool",
                         tool_name=tc.name,
-                        tool_call_id=call_id,
+                        tool_call_id=provider_call_id,
                         tool_result=_tool_result_for_model(result),
                     )
                 )
@@ -304,6 +330,23 @@ def run_investigation(
                 max_output_tokens=max_output_tokens,
             )
             _record_usage(repair_resp.usage)
+        except LLMToolCallFailed as exc:
+            err_dict = {"code": exc.code, "message": exc.message}
+            if exc.attempted_tool:
+                logger.warning("LLM tool call failed in repair: attempted_tool=%s", exc.attempted_tool)
+                err_dict["details"] = {"attempted_tool": exc.attempted_tool}
+            return InvestigationResult(
+                status="failed",
+                answer_status="none",
+                answer_blocks=[],
+                tool_trace=tool_trace,
+                warnings=[],
+                error=err_dict,
+                model=model_used,
+                round_trips=round_trips,
+                duration_ms=_elapsed_ms(),
+                usage=dict(accumulated_usage),
+            )
         except LLMError as exc:
             return InvestigationResult(
                 status="failed",
@@ -340,6 +383,12 @@ def run_investigation(
                 duration_ms=_elapsed_ms(),
                 usage=dict(accumulated_usage),
             )
+
+    # Remap any evidence_call_ids using the private provider-to-local map
+    for block in parsed.blocks:
+        block.evidence_call_ids = [
+            provider_to_local_id.get(cid, cid) for cid in block.evidence_call_ids
+        ]
 
     warnings = check_grounding(parsed.blocks, tool_trace)
     return InvestigationResult(

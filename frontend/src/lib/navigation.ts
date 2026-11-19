@@ -59,9 +59,9 @@ export const NAV_ITEMS: NavItemConfig[] = [
     group: "stages",
     groupLabel: "Stages",
     eyebrow: "Stage 01 · Discover",
-    emptyTitle: "No discovery notes captured",
+    emptyTitle: "No engagement selected",
     emptyDescription:
-      "Add client statements, interview notes, confirmed facts, unknowns, and follow-up questions to structure a testable problem brief.",
+      "Select or create an engagement in Workspace before adding interview notes and generating a structured problem brief.",
     icon: Compass,
   },
   {

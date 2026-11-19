@@ -205,13 +205,22 @@ def _execute_run_in_background(
         run.tool_trace = [item.model_dump(mode="json") for item in result.tool_trace]
         run.warnings = [w.model_dump(mode="json") for w in result.warnings]
         if result.error is not None:
-            run.error = {
+            err_dict: dict[str, Any] = {
                 "code": str(result.error.get("code", "llm_provider_error")),
                 "message": scrub_secrets(
                     str(result.error.get("message", "Investigation failed.")),
                     secrets=(api_key_secret,),
                 ),
             }
+            if "details" in result.error and isinstance(result.error["details"], dict):
+                # Ensure ONLY allowed keys such as attempted_tool are stored, never generated text or reasoning
+                details = result.error["details"]
+                safe_details = {}
+                if "attempted_tool" in details and isinstance(details["attempted_tool"], str):
+                    safe_details["attempted_tool"] = details["attempted_tool"]
+                if safe_details:
+                    err_dict["details"] = safe_details
+            run.error = err_dict
         else:
             run.error = None
         if result.model:

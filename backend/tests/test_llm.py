@@ -422,3 +422,48 @@ def test_usage_column_added_to_existing_agent_runs_table_idempotently() -> None:
     with engine.connect() as conn:
         cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(agent_runs)").fetchall()]
         assert "usage" in cols
+
+
+def test_gemini_adapter_sets_truncated_on_max_tokens_finish_reason() -> None:
+    from app.llm.base import LLMMessage
+    from app.llm.gemini import GeminiProvider
+
+    mock_client = MagicMock()
+    candidate_max = SimpleNamespace(
+        finish_reason="MAX_TOKENS",
+        content=SimpleNamespace(parts=[SimpleNamespace(text="truncated text", thought=False)]),
+    )
+    raw_max = SimpleNamespace(
+        candidates=[candidate_max],
+        model_version="gemini-2.5-flash",
+        usage_metadata=SimpleNamespace(prompt_token_count=10, candidates_token_count=20, total_token_count=30),
+    )
+    mock_client.models.generate_content.return_value = raw_max
+
+    provider = GeminiProvider(
+        api_key="synthetic_gemini_key",
+        model="gemini-2.5-flash",
+        client=mock_client,
+    )
+    resp = provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="hello")],
+    )
+    assert resp.truncated is True
+
+    # Test normal finish reason
+    candidate_stop = SimpleNamespace(
+        finish_reason="STOP",
+        content=SimpleNamespace(parts=[SimpleNamespace(text="full text", thought=False)]),
+    )
+    raw_stop = SimpleNamespace(
+        candidates=[candidate_stop],
+        model_version="gemini-2.5-flash",
+        usage_metadata=SimpleNamespace(prompt_token_count=10, candidates_token_count=20, total_token_count=30),
+    )
+    mock_client.models.generate_content.return_value = raw_stop
+    resp_stop = provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="hello")],
+    )
+    assert resp_stop.truncated is False

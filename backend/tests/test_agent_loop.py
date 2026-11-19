@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
 
 from app.agent.loop import run_investigation
 from app.agent.prompts import BANNED_CAUSAL_PHRASES, SYSTEM_PROMPT
-from app.agent.tools import ToolRunContext, build_analysis_tool_registry
+from app.agent.tools import ToolRegistry, ToolRunContext, ToolSchema, build_analysis_tool_registry
 from app.config import Settings
 from app.db import create_db_engine, create_session_factory, init_db
 from app.ingest.service import ingest_csv_bytes
-from app.llm.base import LLMResponse, ToolCall
+from app.llm.base import LLMMessage, LLMProvider, LLMResponse, ToolCall
+from app.llm.errors import LLMToolCallFailed
 from app.llm.fake import FakeProvider
 from app.models import Dataset, Engagement, InterviewNote
 from app.seed import seed_demo_data
@@ -414,3 +416,157 @@ def test_system_prompt_contains_required_rules_and_banned_words() -> None:
     assert "8" in SYSTEM_PROMPT
     for phrase in BANNED_CAUSAL_PHRASES:
         assert phrase in lower
+
+
+def test_system_prompt_states_closed_tool_list() -> None:
+    lower = SYSTEM_PROMPT.lower()
+    assert "tool list is closed" in lower
+    assert "never any other tool" in lower
+
+
+def test_system_prompt_requires_direct_answer_without_tools_for_out_of_scope_requests() -> None:
+    lower = SYSTEM_PROMPT.lower()
+    assert "out-of-scope" in lower
+    assert "without calling any tool" in lower
+    assert "limitation block" in lower
+
+
+def test_system_prompt_requires_get_findings_first_for_diagnostic_questions() -> None:
+    lower = SYSTEM_PROMPT.lower()
+    assert "diagnostic questions" in lower
+    assert "call get_findings first" in lower
+
+
+def test_system_prompt_requires_evidence_ids_on_any_block_with_numbers() -> None:
+    lower = SYSTEM_PROMPT.lower()
+    assert "contains a number" in lower
+    assert "evidence_call_ids" in lower
+
+
+def test_call_ids_are_run_local_and_sequential_with_provider_supplied_ids() -> None:
+    class ProviderWithCustomCallIds(LLMProvider):
+        model_name = "test-provider"
+
+        def __init__(self) -> None:
+            self.turn = 0
+            self.tool_messages_seen: list[LLMMessage] = []
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            self.turn += 1
+            if self.turn == 1:
+                return LLMResponse(
+                    tool_calls=[
+                        ToolCall(
+                            name="tool_a",
+                            arguments={},
+                            call_id="groq_fc_random_uuid_111",
+                        ),
+                        ToolCall(
+                            name="tool_b",
+                            arguments={},
+                            call_id="groq_fc_random_uuid_222",
+                        ),
+                    ]
+                )
+            # Record tool messages received from the loop
+            for m in messages:
+                if m.role == "tool":
+                    self.tool_messages_seen.append(m)
+            # Answer re-uses the provider call IDs in evidence_call_ids
+            answer_json = json.dumps(
+                {
+                    "blocks": [
+                        {
+                            "type": "finding",
+                            "text": "Found 42 items in tool A and 99 items in tool B.",
+                            "evidence_call_ids": [
+                                "groq_fc_random_uuid_111",
+                                "groq_fc_random_uuid_222",
+                            ],
+                        }
+                    ]
+                }
+            )
+            return LLMResponse(text=answer_json)
+
+    from pydantic import BaseModel
+    from app.agent.tools import ToolSpec
+
+    class DummyArgs(BaseModel):
+        model_config = {"extra": "allow"}
+
+    spec_a = ToolSpec(
+        name="tool_a",
+        description="Tool A",
+        args_model=DummyArgs,
+        handler=lambda ctx, args: {"count": 42},
+    )
+    spec_b = ToolSpec(
+        name="tool_b",
+        description="Tool B",
+        args_model=DummyArgs,
+        handler=lambda ctx, args: {"count": 99},
+    )
+    registry = ToolRegistry(context=MagicMock())
+    registry.register(spec_a)
+    registry.register(spec_b)
+
+    provider = ProviderWithCustomCallIds()
+    result = run_investigation(
+        question="Analyze volume",
+        provider=provider,
+        registry=registry,
+    )
+
+    assert result.status == "completed"
+    assert len(result.tool_trace) == 2
+    assert result.tool_trace[0].call_id == "c1"
+    assert result.tool_trace[1].call_id == "c2"
+
+    # Evidence IDs in answer blocks must be remapped to run-local sequential IDs
+    assert len(result.answer_blocks) == 1
+    assert result.answer_blocks[0]["evidence_call_ids"] == ["c1", "c2"]
+
+    # Provider tool messages must have used the provider-supplied call IDs
+    assert len(provider.tool_messages_seen) == 2
+    assert provider.tool_messages_seen[0].tool_call_id == "groq_fc_random_uuid_111"
+    assert provider.tool_messages_seen[1].tool_call_id == "groq_fc_random_uuid_222"
+
+
+def test_tool_call_failed_records_only_attempted_tool_name() -> None:
+    class FailingToolCallProvider(LLMProvider):
+        model_name = "test-provider"
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            raise LLMToolCallFailed(attempted_tool="get_pizza_topping")
+
+    registry = ToolRegistry(context=MagicMock())
+    provider = FailingToolCallProvider()
+    result = run_investigation(
+        question="What is the best pizza topping?",
+        provider=provider,
+        registry=registry,
+    )
+
+    assert result.status == "failed"
+    assert result.error is not None
+    assert result.error["code"] == "llm_tool_call_failed"
+    assert result.error["details"] == {"attempted_tool": "get_pizza_topping"}
+    # Never record generated text or reasoning
+    assert "generated" not in result.error["details"]
+    assert "reasoning" not in result.error["details"]
+
