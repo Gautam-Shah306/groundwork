@@ -28,17 +28,7 @@ SECTIONS_REQUIRING_QUOTES = (
 )
 
 
-def normalize_text_for_comparison(text: str) -> str:
-    """Normalize smart quotes, whitespace, and case for fuzzy substring search."""
-    if not text:
-        return ""
-    # Smart quotes and dashes
-    s = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("`", "'")
-    s = s.replace("—", "-").replace("–", "-")
-    s = s.replace('"', "'")
-    # Normalize whitespace
-    s = re.sub(r"\s+", " ", s)
-    return s.strip().lower()
+from app.text_utils import normalize_text_for_comparison, verify_quote
 
 
 def _extract_number_tokens(text: str) -> set[str]:

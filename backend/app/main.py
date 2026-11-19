@@ -15,6 +15,7 @@ from app.api.discovery import router as discovery_router
 from app.api.engagements import router as engagements_router
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
+from app.api.triage import router as triage_router
 from app.config import Settings, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
 from app.seed import seed_demo_data
@@ -65,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(diagnostics_router)
     application.include_router(discovery_router)
     application.include_router(assistant_router)
+    application.include_router(triage_router)
     return application
 
 

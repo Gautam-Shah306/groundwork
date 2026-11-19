@@ -1051,3 +1051,247 @@ export async function applyDiscoveryAnalysis(
 
   return (await response.json()) as ProblemBrief;
 }
+
+
+export type AllowedChannel = "email" | "chat" | "web_form" | "whatsapp";
+export type PriorityLevel = "low" | "medium" | "high";
+export type ProposalDecision = "approve" | "reject";
+
+export interface ProposalSignal {
+  signal: string;
+  source_quote: string;
+  quote_verified?: boolean | null;
+}
+
+export interface ProposalFlag {
+  code: string;
+  message: string;
+  where: string;
+}
+
+export interface PipelineTraceStep {
+  call_id: string;
+  tool: string;
+  args: Record<string, unknown>;
+  ok: boolean;
+  data?: Record<string, unknown> | null;
+  error?: { code: string; message: string } | null;
+  duration_ms: number;
+}
+
+export interface ProposalFinalValues {
+  category: string;
+  priority: PriorityLevel;
+  queue: string;
+  reply_text: string;
+  edited_fields?: string[];
+}
+
+export interface TriageProposalResponse {
+  id: number;
+  engagement_id: number;
+  ticket_hash?: string | null;
+  subject?: string | null;
+  body: string;
+  channel?: string | null;
+  category: string;
+  secondary_category?: string | null;
+  priority: string;
+  queue: string;
+  escalation: boolean;
+  rule_id?: string | null;
+  rule_definition?: string | null;
+  signals: ProposalSignal[];
+  rationale?: string | null;
+  draft_reply: string;
+  policy_refs: string[];
+  reviewer_note?: string | null;
+  flags: ProposalFlag[];
+  tool_trace: PipelineTraceStep[];
+  model?: string | null;
+  usage?: Record<string, unknown> | null;
+  error?: Record<string, unknown> | null;
+  status: "awaiting_approval" | "approved" | "rejected";
+  final_values?: ProposalFinalValues | null;
+  decided_by?: string | null;
+  decision_reason?: string | null;
+  edited: boolean;
+  created_at: string;
+  decided_at?: string | null;
+}
+
+export interface CreateProposalPayload {
+  subject?: string | null;
+  body: string;
+  channel?: AllowedChannel;
+}
+
+export interface ProposalCreateResponse {
+  proposal: TriageProposalResponse;
+  duplicate: boolean;
+}
+
+export interface ProposalsListResponse {
+  items: TriageProposalResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ProposalDecisionPayload {
+  decision: ProposalDecision;
+  final?: ProposalFinalValues | null;
+  reason?: string | null;
+}
+
+export interface ProposalDecisionResponse {
+  proposal_id: number;
+  decision: ProposalDecision;
+  status: string;
+  edited: boolean;
+  edited_fields: string[];
+  unresolved_placeholders: string[];
+  decided_by: string;
+  decided_at: string;
+}
+
+export async function createTriageProposal(
+  engagementId: number,
+  payload: CreateProposalPayload
+): Promise<ProposalCreateResponse> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/triage/proposals`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to create triage proposal"
+    );
+  }
+
+  return (await response.json()) as ProposalCreateResponse;
+}
+
+export async function fetchTriageProposals(
+  engagementId: number,
+  options?: { status?: string; page?: number; pageSize?: number },
+  signal?: AbortSignal
+): Promise<ProposalsListResponse> {
+  const params = new URLSearchParams();
+  if (options?.status) {
+    params.set("status", options.status);
+  }
+  if (options?.page) {
+    params.set("page", String(options.page));
+  }
+  if (options?.pageSize) {
+    params.set("page_size", String(options.pageSize));
+  }
+
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/triage/proposals${query}`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to load triage proposals"
+    );
+  }
+
+  return (await response.json()) as ProposalsListResponse;
+}
+
+export async function fetchTriageProposal(
+  engagementId: number,
+  proposalId: number,
+  signal?: AbortSignal
+): Promise<TriageProposalResponse> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/triage/proposals/${proposalId}`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to load triage proposal"
+    );
+  }
+
+  return (await response.json()) as TriageProposalResponse;
+}
+
+export async function fetchProposalHistory(
+  engagementId: number,
+  proposalId: number,
+  signal?: AbortSignal
+): Promise<AuditLogEntry[]> {
+  const response = await fetch(
+    buildApiUrl(
+      `/api/engagements/${engagementId}/triage/proposals/${proposalId}/history`
+    ),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to load proposal action history"
+    );
+  }
+
+  return (await response.json()) as AuditLogEntry[];
+}
+
+export async function recordProposalDecision(
+  engagementId: number,
+  proposalId: number,
+  payload: ProposalDecisionPayload
+): Promise<ProposalDecisionResponse> {
+  const response = await fetch(
+    buildApiUrl(
+      `/api/engagements/${engagementId}/triage/proposals/${proposalId}/decision`
+    ),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    throw await extractStructuredApiError(
+      response,
+      "Unable to record proposal decision"
+    );
+  }
+
+  return (await response.json()) as ProposalDecisionResponse;
+}

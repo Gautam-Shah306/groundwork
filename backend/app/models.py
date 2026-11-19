@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     TypeDecorator,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -305,6 +306,9 @@ class Ticket(Base):
 
 class TriageProposal(Base):
     __tablename__ = "triage_proposals"
+    __table_args__ = (
+        UniqueConstraint("engagement_id", "ticket_hash", name="uq_triage_proposals_eng_ticket_hash"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     engagement_id: Mapped[int] = mapped_column(
@@ -313,23 +317,56 @@ class TriageProposal(Base):
         nullable=False,
         index=True,
     )
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     ticket_text: Mapped[str] = mapped_column(Text, nullable=False)
+    channel: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    ticket_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     proposed_category: Mapped[str] = mapped_column(String(120), nullable=False)
+    secondary_category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     proposed_priority: Mapped[str] = mapped_column(String(60), nullable=False)
     proposed_queue: Mapped[str] = mapped_column(String(120), nullable=False)
     reasoning: Mapped[str] = mapped_column(Text, nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    escalation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rule_fired: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    signals: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    flags: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    tool_trace: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
     draft_reply: Mapped[str] = mapped_column(Text, nullable=False)
+    policy_refs: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    reviewer_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     status: Mapped[ProposalStatus] = mapped_column(
         SAEnum(ProposalStatus, native_enum=False),
         nullable=False,
         default=ProposalStatus.awaiting_approval,
     )
     final_values: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    decision_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     engagement: Mapped[Engagement] = relationship(back_populates="triage_proposals")
+
+    @property
+    def body(self) -> str:
+        return self.ticket_text
+
+    @property
+    def category(self) -> str:
+        return self.proposed_category
+
+    @property
+    def priority(self) -> str:
+        return self.proposed_priority
+
+    @property
+    def queue(self) -> str:
+        return self.proposed_queue
 
 
 class AuditLog(Base):

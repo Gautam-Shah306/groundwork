@@ -19,6 +19,7 @@ class CategoryConfig(BaseModel):
     id: str = Field(..., min_length=1)
     display_name: str = Field(..., min_length=1)
     queue: str = Field(..., min_length=1)
+    description: str | None = None
 
 
 class QueuesConfig(BaseModel):

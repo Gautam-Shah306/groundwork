@@ -140,12 +140,19 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
     assert settings.llm_timeout_seconds == 30
     assert settings.llm_max_retries == 2
     assert settings.llm_max_output_tokens == 2500
+    assert settings.llm_discovery_max_output_tokens == 6000
+    assert settings.llm_triage_max_output_tokens == 2000
     assert settings.llm_reasoning_effort == "low"
     assert settings.database_url == "sqlite:///./data/groundwork.db"
     assert settings.llm_configured is False
     assert settings.database_url_scheme == "sqlite"
     assert settings.cors_origin_list == ["http://localhost:5173"]
     assert settings.seed_on_start is False
+
+
+def test_discovery_max_output_tokens_default_is_6000() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.llm_discovery_max_output_tokens == 6000
 
 
 def test_app_starts_without_llm_key(monkeypatch, tmp_path) -> None:

@@ -87,7 +87,7 @@ def test_groq_adapter_translates_tool_schemas_and_parses_tool_calls() -> None:
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="llama-3.3-70b-versatile",
         timeout_seconds=20,
         max_output_tokens=1000,
@@ -136,7 +136,7 @@ def test_groq_adapter_malformed_tool_arguments_flagged_not_raised() -> None:
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         client=mock_client,
     )
@@ -212,7 +212,7 @@ def test_groq_adapter_ignores_reasoning_field_and_never_returns_it() -> None:
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         client=mock_client,
     )
@@ -235,7 +235,7 @@ def test_groq_adapter_sets_reasoning_effort_only_for_gpt_oss_models() -> None:
 
     # For openai/gpt-oss-* model: reasoning_effort passed
     gpt_oss_provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         reasoning_effort="low",
         client=mock_client,
@@ -247,7 +247,7 @@ def test_groq_adapter_sets_reasoning_effort_only_for_gpt_oss_models() -> None:
     # For non-gpt-oss model: reasoning_effort NOT passed
     mock_client.reset_mock()
     llama_provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="llama-3.3-70b-versatile",
         reasoning_effort="low",
         client=mock_client,
@@ -262,7 +262,7 @@ def test_groq_adapter_uses_max_completion_tokens_and_disables_sdk_retries() -> N
     mock_client.chat.completions.create.return_value = _make_groq_completion(content="ans")
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_output_tokens=2500,
         client=mock_client,
@@ -329,7 +329,7 @@ def test_groq_429_honours_short_retry_after_then_succeeds() -> None:
     sleeps: list[float] = []
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_retries=2,
         client=mock_client,
@@ -353,7 +353,7 @@ def test_groq_429_with_long_retry_after_fails_without_waiting() -> None:
     sleeps: list[float] = []
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_retries=2,
         client=mock_client,
@@ -378,7 +378,7 @@ def test_groq_daily_limit_429_maps_to_quota_exhausted_and_is_not_retried() -> No
     sleeps: list[float] = []
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_retries=2,
         client=mock_client,
@@ -404,7 +404,7 @@ def test_groq_tool_use_failed_retried_once_then_raises_llm_tool_call_failed() ->
     sleeps: list[float] = []
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_retries=2,
         client=mock_client,
@@ -426,7 +426,7 @@ def test_groq_401_maps_to_auth_error_not_retried() -> None:
     sleeps: list[float] = []
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         max_retries=2,
         client=mock_client,
@@ -449,7 +449,7 @@ def test_groq_404_maps_to_model_not_found_without_exposing_model_value() -> None
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model=secret_model,
         client=mock_client,
     )
@@ -469,7 +469,7 @@ def test_groq_413_maps_to_request_too_large() -> None:
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         client=mock_client,
     )
@@ -487,7 +487,7 @@ def test_groq_timeout_maps_to_llm_timeout() -> None:
     )
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         timeout_seconds=22,
         client=mock_client,
@@ -514,7 +514,7 @@ def test_groq_adapter_sets_truncated_when_finish_reason_is_length() -> None:
     mock_client.chat.completions.create.return_value = raw_response_len
 
     provider = GroqProvider(
-        api_key="gsk_synthetic_key_not_real",
+        api_key="mock_synthetic_key_not_real",
         model="openai/gpt-oss-20b",
         client=mock_client,
     )
@@ -539,3 +539,39 @@ def test_groq_adapter_sets_truncated_when_finish_reason_is_length() -> None:
         messages=[LLMMessage(role="user", content="write normal")],
     )
     assert res_normal.truncated is False
+
+
+def test_groq_adapter_passes_temperature_when_set() -> None:
+    mock_client = MagicMock()
+    choice = SimpleNamespace(
+        message=SimpleNamespace(content="Classification result", tool_calls=[]),
+        finish_reason="stop",
+    )
+    mock_client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[choice],
+        model="openai/gpt-oss-20b",
+        usage=SimpleNamespace(prompt_tokens=40, completion_tokens=20, total_tokens=60),
+    )
+
+    provider = GroqProvider(
+        api_key="mock_synthetic_key_not_real",
+        model="openai/gpt-oss-20b",
+        client=mock_client,
+    )
+    # When temperature=0.0 is explicitly passed
+    provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="classify")],
+        temperature=0.0,
+    )
+    call_kwargs0 = mock_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs0["temperature"] == 0.0
+
+    # When temperature=0.5 is passed
+    provider.generate(
+        system="sys",
+        messages=[LLMMessage(role="user", content="draft")],
+        temperature=0.5,
+    )
+    call_kwargs5 = mock_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs5["temperature"] == 0.5

@@ -203,7 +203,7 @@ docker compose down
   - Updated `README.md` with Discovery section, schema summary, and `LLM_DISCOVERY_MAX_OUTPUT_TOKENS` configuration.
   - Updated `.env.example` and `docker-compose.yml` to support `LLM_DISCOVERY_MAX_OUTPUT_TOKENS`.
 - **Part B (Backend Discovery Workspace):**
-  - Implemented Pydantic schema in `backend/app/discovery/schema.py` (`BriefSections`, `Item`, `KnownFactItem`, `QuestionItem`, `ProblemStatement`, `KpiCandidate`).
+  - Implemented Pydantic schema in `backend/app/discovery/schema.py` (`BriefSections`, `Item`, `KnownFactItem`, `QuestionItem`, `ProblemStatement`, `KpiCandidate`). Note on quote validation cap: The Prompt 7 spec specified a 240-character cap for `source_quote`; the 400 validation cap in `backend/app/discovery/schema.py` was an implementation decision to accommodate longer verbatim quotes. The 400 cap is retained as a validation limit, while the prompt is updated in Prompt 8 to request quotes of at most 200 characters.
   - Added `BriefVersion` (retaining 5 newest versions per engagement) and `DiscoveryAnalysis` tables to `backend/app/models.py`.
   - Built discovery prompt templates and service in `backend/app/discovery/` with 60s timeout, XML notes data-fencing, repair retry loop, and truncation detection.
   - Built deterministic post-processing pipeline in `backend/app/discovery/postprocess.py`: verbatim quote verification against notes, quote length capping, number ungrounded warnings, causal wording warnings in problem statements, hypothesis hedging checks, and automatic downgrade of unverified observed facts to client statements.
@@ -248,5 +248,63 @@ docker compose down
 ### What was not done
 - Build ahead for Prompt 8 (Stage 03 Build: support triage queue, rules engine, draft generator).
 - No git commits or branches created (per R12).
+
+
+## Prompt 8 — Support Triage Prototype: AI Proposal, Deterministic Priority, Reply Drafting, Human Approval & Prototypes Screen (2026-11-19)
+
+### What was built
+- **Part 0 (Invariants & Tuning):**
+  - Verified repository invariants: `.env` untracked, tags `p01` through `p07` and `p06b` present.
+  - Idempotent table column additions (`ensure_columns` in `backend/app/db.py`) for `agent_runs.usage` and `triage_proposals`.
+  - Added final-answer fallback and rate limit handling in investigation loop.
+- **Part A (Configuration Files):**
+  - `config/queues.yaml`: Configured 7 categories and 5 routing queues (`Escalations`, `Payments`, `Returns and refunds`, `Order support`, `General inquiries`).
+  - `config/priority_rules.yaml`: Defined 10 closed-vocabulary priority signals, 9 deterministic rules (`R-LEGAL` through `R-GENERAL`), and default rule `R-DEFAULT`.
+- **Part B (Backend Support Triage Prototype):**
+  - `backend/app/triage/config.py`: Validated YAML configuration loaders and getters.
+  - `backend/app/triage/priority.py`: Pure deterministic rule evaluation function (`evaluate_priority`) adhering strictly to R1 and R4 (zero LLM metric or priority invention).
+  - `backend/app/triage/prompts.py`: Prompt templates with XML data fencing (`<ticket>...</ticket>`) for untrusted user text, delimiter neutralization, closed category/signal vocabularies, and closed allowed placeholder list.
+  - `backend/app/triage/tools.py`: 5 deterministic Pydantic-validated tools (`classify_ticket`, `recommend_priority`, `draft_ticket_response`, `create_triage_proposal`, `record_human_decision`). Trace arguments store lengths only (`body_chars`, `subject_chars`), never raw ticket text.
+  - `backend/app/triage/pipeline.py`: 4-step orchestration (`classify_ticket` -> `recommend_priority` -> `draft_ticket_response` -> `create_triage_proposal`).
+  - `backend/app/api/triage.py`: REST API endpoints mounted at `/api/engagements/{engagement_id}/triage/proposals` (POST create, GET list with status filtering and pagination, GET detail, GET audit history, POST decision). Idempotent proposal creation based on ticket SHA-256 hash (`HTTP 200` with `duplicate: true`). Enforces human review (R3), conflict guards (`HTTP 409 already_decided`), and audit logging.
+  - Unit and integration tests: 25 tests in `backend/tests/test_triage_pipeline.py` and 19 tests in `backend/tests/test_triage_api.py`. Total backend test suite: 312 passed, 91.81% coverage (exceeds >= 90% threshold).
+- **Part C (Frontend Prototypes Screen):**
+  - API client functions and types in `frontend/src/lib/api.ts`.
+  - UI components in `frontend/src/components/prototypes/`: `SubmitTicketForm`, `ProposalInbox`, `ProposalDetail`, `SignalList`, `ReplyEditor`, `PipelineTrace`, `DecisionControls`, `ActionHistory`.
+  - Screen: `frontend/src/pages/PrototypesPage.tsx` with responsive layout, persistent human approval notice, synthetic data notice, and status filtering.
+  - Route mounted at `/prototypes` in `frontend/src/App.tsx`.
+  - Tests: 26 unit and integration tests in `frontend/src/__tests__/Prototypes.test.tsx`. Total frontend test suite: 8 test files, 127 tests passed; `npm run typecheck` and `npm run build` passed with zero errors.
+- **Part D (Live Verification against Groq / openai/gpt-oss-20b):**
+  - Executed end-to-end verification via `scripts/verify_triage_live.py` with 30s rate-limit pauses:
+    - Health check: HTTP 200, `llm_configured=True`.
+    - Ticket 1 (Order KL-9921 arrived damaged): HTTP 201, category `damaged_item`, priority `high` (R-DAMAGE), queue `Returns and refunds`, signal `item_damaged_or_defective` verified, policy-grounded draft reply citing `2. Replacements for Damaged or Wrong Items`. Idempotent duplicate re-submission returned HTTP 200 with `duplicate: true`. Decision to approve with edits succeeded (HTTP 200). Second decision attempt returned HTTP 409 (`already_decided`). Audit log recorded 2 chronological events (`triage_proposed` and `triage_decision` with field diffs).
+    - Ticket 2 (Duplicate charge): HTTP 201, category `payment_issues`, priority `high` (R-PAY), queue `Payments`, signal `payment_charged_twice`.
+    - Ticket 3 (Legal threat): HTTP 201, category `damaged_item`, priority `high` (R-LEGAL), queue `Escalations`, `escalation: true`, signal `legal_or_chargeback_threat`.
+    - Ticket 4 (Prompt injection attempt): Adversarial system alert neutralized; zero secret leakage.
+    - Ticket 5 (Hinglish inquiry): HTTP 201, category `order_tracking`, priority `medium` (R-DELAY), queue `Order support`, signal `delivery_delayed_over_3_days`.
+    - Throwaway engagement deleted cleanly (HTTP 204).
+
+### How to run it
+```powershell
+# Run backend tests natively with coverage
+Push-Location backend; .\.venv\Scripts\pytest.exe --cov=app --cov-fail-under=90; Pop-Location
+
+# Run triage unit and integration tests
+Push-Location backend; .\.venv\Scripts\pytest.exe tests/test_triage_pipeline.py tests/test_triage_api.py -v; Pop-Location
+
+# Run frontend tests, typecheck, and build in Docker
+docker-compose exec -T frontend npm run test
+docker-compose exec -T frontend npm run typecheck
+docker-compose exec -T frontend npm run build
+
+# Run live triage verification against running backend
+backend\.venv\Scripts\python.exe scripts/verify_triage_live.py
+```
+
+### What was not done
+- Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).
+
 
 

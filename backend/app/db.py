@@ -31,21 +31,57 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
-def ensure_agent_runs_usage_column(engine: Engine) -> None:
-    """Add the usage column to agent_runs if the table exists but the column is missing."""
+TRIAGE_PROPOSALS_COLUMNS: dict[str, str] = {
+    "subject": "VARCHAR(200)",
+    "channel": "VARCHAR(60)",
+    "ticket_hash": "VARCHAR(64)",
+    "secondary_category": "VARCHAR(120)",
+    "signals": "JSON",
+    "flags": "JSON",
+    "tool_trace": "JSON",
+    "rationale": "TEXT",
+    "escalation": "BOOLEAN DEFAULT 0",
+    "policy_refs": "JSON",
+    "reviewer_note": "TEXT",
+    "model": "VARCHAR(120)",
+    "usage": "JSON",
+    "error": "JSON",
+    "decided_by": "VARCHAR(120)",
+    "decision_reason": "VARCHAR(300)",
+    "edited": "BOOLEAN DEFAULT 0",
+}
+
+
+def ensure_columns(engine: Engine, table: str, columns: dict[str, str]) -> None:
+    """Add columns to an existing table if they are missing (column-exists guard)."""
     with engine.connect() as conn:
         if engine.dialect.name == "sqlite":
-            result = conn.exec_driver_sql("PRAGMA table_info(agent_runs)")
-            columns = [row[1] for row in result.fetchall()]
-            if columns and "usage" not in columns:
-                conn.exec_driver_sql("ALTER TABLE agent_runs ADD COLUMN usage JSON")
+            result = conn.exec_driver_sql(f"PRAGMA table_info({table})")
+            existing = [row[1] for row in result.fetchall()]
+            if existing:
+                for col_name, sql_type in columns.items():
+                    if col_name not in existing:
+                        conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col_name} {sql_type}")
                 conn.commit()
+
+
+def ensure_agent_runs_usage_column(engine: Engine) -> None:
+    """Add the usage column to agent_runs if the table exists but the column is missing."""
+    ensure_columns(engine, "agent_runs", {"usage": "JSON"})
 
 
 def init_db(engine: Engine) -> None:
     """Create all declared database tables if they do not yet exist."""
     Base.metadata.create_all(bind=engine)
-    ensure_agent_runs_usage_column(engine)
+    ensure_columns(engine, "agent_runs", {"usage": "JSON"})
+    ensure_columns(engine, "triage_proposals", TRIAGE_PROPOSALS_COLUMNS)
+    with engine.connect() as conn:
+        if engine.dialect.name == "sqlite":
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_triage_proposals_eng_ticket_hash "
+                "ON triage_proposals (engagement_id, ticket_hash)"
+            )
+            conn.commit()
 
 
 def get_db(request: Request) -> Generator[Session, None, None]:

@@ -110,27 +110,37 @@ class GroundingWarning(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
-def _collect_numeric_values(obj: Any, acc: list[float]) -> None:
-    """Recursively collect every non-boolean numeric value from tool output data."""
+def _collect_numeric_values(obj: Any, acc: list[float], include_strings: bool = False) -> None:
+    """Recursively collect numeric values from tool output data.
+
+    When include_strings is True (for cited tool calls only), also extracts numeric
+    and percentage values mentioned inside text fields (e.g. finding statements).
+    """
     if isinstance(obj, bool) or obj is None:
         return
     if isinstance(obj, (int, float)):
         acc.append(float(obj))
         return
+    if include_strings and isinstance(obj, str):
+        for _raw, val, _dec, is_pct in _extract_candidate_numbers(obj):
+            acc.append(val)
+            if is_pct:
+                acc.append(val / 100.0)
+        return
     if isinstance(obj, list):
         for item in obj:
-            _collect_numeric_values(item, acc)
+            _collect_numeric_values(item, acc, include_strings=include_strings)
         return
     if isinstance(obj, dict):
         for val in obj.values():
-            _collect_numeric_values(val, acc)
+            _collect_numeric_values(val, acc, include_strings=include_strings)
 
 
-def _extract_tool_numbers(result: ToolResult) -> list[float]:
+def _extract_tool_numbers(result: ToolResult, include_strings: bool = False) -> list[float]:
     nums: list[float] = []
     if not result.ok:
         return nums
-    _collect_numeric_values(result.data, nums)
+    _collect_numeric_values(result.data, nums, include_strings=include_strings)
     if result.original_row_count is not None:
         nums.append(float(result.original_row_count))
     return nums
@@ -202,8 +212,13 @@ def check_grounding(
     warnings: list[GroundingWarning] = []
 
     trace_by_id: dict[str, ToolResult] = {r.call_id: r for r in tool_trace}
-    numbers_by_call: dict[str, list[float]] = {
-        r.call_id: _extract_tool_numbers(r) for r in tool_trace if r.ok
+    # Uncited matching strictly inspects numeric fields (never string fields of uncited calls)
+    numbers_by_call_strict: dict[str, list[float]] = {
+        r.call_id: _extract_tool_numbers(r, include_strings=False) for r in tool_trace if r.ok
+    }
+    # Cited pool includes numbers extracted from text fields of cited tool results
+    numbers_by_call_cited: dict[str, list[float]] = {
+        r.call_id: _extract_tool_numbers(r, include_strings=True) for r in tool_trace if r.ok
     }
 
     for idx, block in enumerate(blocks):
@@ -266,16 +281,16 @@ def check_grounding(
 
         cited_pool: list[float] = []
         for cid in valid_cited_ids:
-            cited_pool.extend(numbers_by_call.get(cid, []))
+            cited_pool.extend(numbers_by_call_cited.get(cid, []))
 
         for display, value, decimals, is_percent in candidates:
             if cited_pool and _matches_any_value(value, decimals, is_percent, cited_pool):
                 continue
 
-            # Check whether the number exists in any uncited successful tool call
+            # Check whether the number exists in any uncited successful tool call (strict numeric fields only)
             uncited_matches = [
                 cid
-                for cid, nums in numbers_by_call.items()
+                for cid, nums in numbers_by_call_strict.items()
                 if cid not in valid_cited_ids
                 and _matches_any_value(value, decimals, is_percent, nums)
             ]

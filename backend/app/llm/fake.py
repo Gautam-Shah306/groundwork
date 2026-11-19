@@ -16,6 +16,7 @@ class RecordedCall:
     messages: list[LLMMessage]
     tools: list[ToolSchema]
     max_output_tokens: int | None
+    temperature: float | None = None
 
 
 class FakeProvider(LLMProvider):
@@ -38,6 +39,7 @@ class FakeProvider(LLMProvider):
         messages: list[LLMMessage],
         tools: list[ToolSchema] | None = None,
         max_output_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> LLMResponse:
         self.calls.append(
             RecordedCall(
@@ -45,6 +47,7 @@ class FakeProvider(LLMProvider):
                 messages=[m.model_copy(deep=True) for m in messages],
                 tools=[t.model_copy(deep=True) for t in (tools or [])],
                 max_output_tokens=max_output_tokens,
+                temperature=temperature,
             )
         )
         if not self._responses:

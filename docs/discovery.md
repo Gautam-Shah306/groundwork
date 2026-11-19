@@ -36,7 +36,7 @@ All problem briefs conform to the `BriefSections` schema (`backend/app/discovery
 Every item in list sections contains:
 - `id`: Unique 8-character hex string.
 - `text`: Concise item content ($\le 300$ chars).
-- `source_quote`: Optional verbatim quote from interview notes ($\le 240$ chars).
+- `source_quote`: Optional verbatim quote from interview notes ($\le 400$ chars validation limit; prompt requests short single-sentence fragments $\le 200$ chars; Prompt 7 spec originally stated 240 chars).
 - `quote_verified`: Boolean set by post-processing (`true` if found in source text, `false` otherwise).
 - `origin`: `"ai"` or `"user"`.
 - `status`: `"ai_draft"`, `"user_edited"`, or `"confirmed"`.
@@ -118,4 +118,4 @@ LLM Generation (Groq / Gemini)
 
 - **What is sent to the LLM**: Only engagement metadata (`name`, `client_name`, `industry`, `client_statement`) and the text of explicitly selected interview notes within escaped `<<<NOTE_START>>>` delimiters.
 - **What is NEVER sent**: Ticket row data, metrics tables, database primary keys, audit logs, or answer key files.
-- **Token Limits**: Discovery analysis requests use `LLM_DISCOVERY_MAX_OUTPUT_TOKENS` (default 4,000) to accommodate comprehensive structured briefs.
+- **Token Limits**: Discovery analysis requests use `LLM_DISCOVERY_MAX_OUTPUT_TOKENS` (default 6,000) to accommodate comprehensive structured briefs.

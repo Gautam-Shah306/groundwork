@@ -372,6 +372,7 @@ class GroqProvider(LLMProvider):
         messages: list[LLMMessage],
         tools: list[ToolSchema] | None = None,
         max_output_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> LLMResponse:
         token_cap = (
             max_output_tokens
@@ -384,8 +385,11 @@ class GroqProvider(LLMProvider):
         kwargs: dict[str, Any] = {
             "model": self.model_name,
             "messages": chat_messages,
-            "temperature": 0.0,
         }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        else:
+            kwargs["temperature"] = 0.0
         if chat_tools:
             kwargs["tools"] = chat_tools
 

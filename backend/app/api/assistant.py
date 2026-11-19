@@ -231,6 +231,7 @@ def _execute_run_in_background(
         run.duration_ms = result.duration_ms
         db.commit()
     except Exception as exc:  # pragma: no cover - defensive worker guard
+        logger.exception("Assistant background worker failed: %s", exc)
         try:
             db.rollback()
             run = db.get(AgentRun, run_id)

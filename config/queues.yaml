@@ -9,21 +9,28 @@ categories:
   - id: order_tracking
     display_name: Order tracking
     queue: Order support
+    description: Inquiries about order shipment status, transit delays, delivery timelines, or tracking updates.
   - id: returns_refunds
     display_name: Returns and refunds
     queue: Returns and refunds
+    description: Requests to return products, obtain return shipping labels, check refund status, or process cancellations and exchanges.
   - id: payment_issues
     display_name: Payment issues
     queue: Payments
+    description: Inquiries regarding billing charges, duplicate transactions, payment processing failures, or invoices.
   - id: product_questions
     display_name: Product questions
     queue: General
+    description: Pre-purchase and assembly questions about product specifications, materials, dimensions, care instructions, or stock availability.
   - id: address_change
     display_name: Address change
     queue: Order support
+    description: Requests to update shipping destination, recipient contact info, or delivery address before dispatch.
   - id: damaged_item
     display_name: Damaged item
     queue: Returns and refunds
+    description: Reports of furniture or decor items arriving broken, scratched, defective, missing parts, or damaged in transit.
   - id: account_login
     display_name: Account and login
     queue: General
+    description: Account access difficulties, password resets, login verification, or account profile updates.

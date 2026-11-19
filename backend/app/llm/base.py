@@ -78,5 +78,6 @@ class LLMProvider(ABC):
         messages: list[LLMMessage],
         tools: list[ToolSchema] | None = None,
         max_output_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> LLMResponse:
         """Execute one model round trip and return a normalized LLMResponse."""

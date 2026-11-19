@@ -277,7 +277,7 @@ def test_factory_returns_groq_adapter_for_groq_provider_case_insensitive() -> No
         settings = Settings(
             _env_file=None,
             llm_provider=name,
-            llm_api_key="gsk_key",
+            llm_api_key="mock_groq_key",
             llm_model="openai/gpt-oss-20b",
         )
         prov = get_provider(settings)
@@ -289,7 +289,7 @@ def test_health_llm_configured_true_for_groq_with_key_and_model() -> None:
     settings = Settings(
         _env_file=None,
         llm_provider="groq",
-        llm_api_key="gsk_real_key",
+        llm_api_key="mock_groq_real_key",
         llm_model="openai/gpt-oss-20b",
     )
     assert settings.llm_configured is True
@@ -359,7 +359,7 @@ def test_all_llm_errors_never_contain_api_key_or_headers() -> None:
     )
 
     secret = "AIzaSyTopSecret1234567890ABC"
-    groq_secret = "gsk_supersecretkeyvalue999888"
+    groq_secret = "mock_supersecretkeyvalue999888"
     msg = f"Failed with {secret} and {groq_secret} headers: Authorization: Bearer {secret} and x-goog-api-key: {secret}"
 
     for err_cls in (
@@ -467,3 +467,31 @@ def test_gemini_adapter_sets_truncated_on_max_tokens_finish_reason() -> None:
         messages=[LLMMessage(role="user", content="hello")],
     )
     assert resp_stop.truncated is False
+
+
+def test_gemini_adapter_passes_temperature_when_set() -> None:
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = _make_gemini_response(text="Triage draft response")
+
+    provider = GeminiProvider(
+        api_key="synthetic_gemini_key",
+        model="gemini-2.5-flash",
+        client=mock_client,
+    )
+    # When temperature=0.0 is passed explicitly
+    provider.generate(
+        system="System prompt",
+        messages=[LLMMessage(role="user", content="Classify ticket")],
+        temperature=0.0,
+    )
+    cfg0 = mock_client.models.generate_content.call_args.kwargs["config"]
+    assert cfg0.temperature == 0.0
+
+    # When temperature=0.7 is passed
+    provider.generate(
+        system="System prompt",
+        messages=[LLMMessage(role="user", content="Brainstorm")],
+        temperature=0.7,
+    )
+    cfg7 = mock_client.models.generate_content.call_args.kwargs["config"]
+    assert cfg7.temperature == 0.7

@@ -570,3 +570,219 @@ def test_tool_call_failed_records_only_attempted_tool_name() -> None:
     assert "generated" not in result.error["details"]
     assert "reasoning" not in result.error["details"]
 
+
+def test_loop_retries_once_without_tools_when_model_attempts_unregistered_tool(loop_fixture) -> None:
+    _, _, _, ctx = loop_fixture
+    registry = build_analysis_tool_registry(ctx)
+
+    valid_json = json.dumps({
+        "blocks": [
+            {
+                "type": "hypothesis",
+                "text": "Fallback answer successfully delivered without tools.",
+                "evidence_call_ids": [],
+            }
+        ]
+    })
+
+    call_count = 0
+
+    class UnregisteredToolThenSuccessProvider(LLMProvider):
+        model_name = "test-provider"
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise LLMToolCallFailed(attempted_tool="JSON")
+            return LLMResponse(text=valid_json, tool_calls=[], model="test-provider")
+
+    provider = UnregisteredToolThenSuccessProvider()
+    result = run_investigation(
+        question="Why are queues growing?",
+        provider=provider,
+        registry=registry,
+    )
+
+    assert result.status == "completed"
+    assert call_count == 2
+    assert result.usage is not None
+    assert result.usage.get("fallback_used") is True
+    assert len(result.answer_blocks) == 1
+    assert result.answer_blocks[0]["type"] == "hypothesis"
+
+
+def test_fallback_call_offers_no_tools_and_adds_final_answer_nudge(loop_fixture) -> None:
+    _, _, _, ctx = loop_fixture
+    registry = build_analysis_tool_registry(ctx)
+
+    recorded_tools: list[Any] = []
+    recorded_messages: list[list[LLMMessage]] = []
+
+    valid_json = json.dumps({
+        "blocks": [
+            {
+                "type": "hypothesis",
+                "text": "Valid final response after nudge.",
+                "evidence_call_ids": [],
+            }
+        ]
+    })
+
+    class NudgeVerifyingProvider(LLMProvider):
+        model_name = "test-provider"
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            recorded_tools.append(tools)
+            recorded_messages.append(list(messages))
+            if len(recorded_tools) == 1:
+                raise LLMToolCallFailed(attempted_tool="custom_final_answer")
+            return LLMResponse(text=valid_json, tool_calls=[], model="test-provider")
+
+    provider = NudgeVerifyingProvider()
+    result = run_investigation(
+        question="What is the root cause?",
+        provider=provider,
+        registry=registry,
+    )
+
+    assert result.status == "completed"
+    assert len(recorded_tools) == 2
+    # First call offered tools
+    assert recorded_tools[0] is not None
+    assert len(recorded_tools[0]) > 0
+    # Second call offered NO tools
+    assert recorded_tools[1] is None
+
+    # Check appended user-role nudge
+    fallback_msgs = recorded_messages[1]
+    assert fallback_msgs[-1].role == "user"
+    assert (
+        fallback_msgs[-1].content
+        == "Respond now with only the JSON answer object described in the system prompt. Do not call any tool."
+    )
+
+
+def test_loop_does_not_fall_back_when_attempted_tool_is_registered(loop_fixture) -> None:
+    _, _, _, ctx = loop_fixture
+    registry = build_analysis_tool_registry(ctx)
+    registered_name = registry.tool_names[0]
+
+    call_count = 0
+
+    class RegisteredToolFailureProvider(LLMProvider):
+        model_name = "test-provider"
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            nonlocal call_count
+            call_count += 1
+            raise LLMToolCallFailed(attempted_tool=registered_name)
+
+    provider = RegisteredToolFailureProvider()
+    result = run_investigation(
+        question="Analyze ticket volume",
+        provider=provider,
+        registry=registry,
+    )
+
+    # Must fail without attempting fallback
+    assert result.status == "failed"
+    assert call_count == 1
+    assert result.error is not None
+    assert result.error["code"] == "llm_tool_call_failed"
+    assert result.error["details"] == {"attempted_tool": registered_name}
+    assert result.usage.get("fallback_used") is None or result.usage.get("fallback_used") is False
+
+
+def test_fallback_used_at_most_once_per_run(loop_fixture) -> None:
+    _, _, _, ctx = loop_fixture
+    registry = build_analysis_tool_registry(ctx)
+
+    call_count = 0
+
+    class RepeatedUnregisteredToolProvider(LLMProvider):
+        model_name = "test-provider"
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            nonlocal call_count
+            call_count += 1
+            # Fails on every call with an unregistered tool
+            raise LLMToolCallFailed(attempted_tool="unregistered_tool_xyz")
+
+    provider = RepeatedUnregisteredToolProvider()
+    result = run_investigation(
+        question="Why is SLA declining?",
+        provider=provider,
+        registry=registry,
+    )
+
+    assert result.status == "failed"
+    # Call 1: initial call (failed with unregistered tool) -> triggers 1 fallback
+    # Call 2: fallback call (also failed) -> fallback fails, loop exits
+    assert call_count == 2
+    assert result.error is not None
+    assert result.error["code"] == "llm_tool_call_failed"
+
+
+def test_fallback_failure_surfaces_original_error(loop_fixture) -> None:
+    _, _, _, ctx = loop_fixture
+    registry = build_analysis_tool_registry(ctx)
+
+    class FallbackCrashesProvider(LLMProvider):
+        model_name = "test-provider"
+        call_count = 0
+
+        def generate(
+            self,
+            *,
+            system: str,
+            messages: list[LLMMessage],
+            tools: list[Any] | None = None,
+            max_output_tokens: int | None = None,
+        ) -> LLMResponse:
+            self.call_count += 1
+            if self.call_count == 1:
+                raise LLMToolCallFailed(attempted_tool="JSON")
+            raise RuntimeError("Underlying provider connection died during fallback")
+
+    provider = FallbackCrashesProvider()
+    result = run_investigation(
+        question="Can you explain the backlog?",
+        provider=provider,
+        registry=registry,
+    )
+
+    # Must surface the original LLMToolCallFailed error
+    assert result.status == "failed"
+    assert result.error is not None
+    assert result.error["code"] == "llm_tool_call_failed"
+    assert result.error["details"] == {"attempted_tool": "JSON"}
+

@@ -74,7 +74,7 @@ def analyse_notes_endpoint(
 
     if not notes:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "no_notes",
                 "message": "At least one interview note is required for discovery analysis.",
@@ -84,7 +84,7 @@ def analyse_notes_endpoint(
     total_chars = sum(len(n.title or "") + len(n.content or "") for n in notes)
     if total_chars > MAX_COMBINED_NOTES_CHARS:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "notes_too_large",
                 "message": (
@@ -114,7 +114,7 @@ def analyse_notes_endpoint(
         return DiscoveryAnalysisResponse.from_orm_model(analysis)
     except LLMOutputTruncated as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": exc.code, "message": exc.message},
         ) from exc
     except (LLMError, Exception) as exc:
@@ -126,7 +126,7 @@ def analyse_notes_endpoint(
         ) from exc
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "validation_error", "message": str(exc)},
         ) from exc
 
@@ -185,7 +185,7 @@ def apply_analysis_endpoint(
 
     if analysis.status != "completed" or not analysis.draft:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "invalid_analysis",
                 "message": "Only successfully completed analyses with a draft can be applied.",

@@ -20,7 +20,7 @@ from app.agent.grounding import (
 from app.agent.prompts import REPAIR_PROMPT, SYSTEM_PROMPT
 from app.agent.tools import ToolError, ToolRegistry, ToolResult
 from app.llm.base import LLMMessage, LLMProvider
-from app.llm.errors import LLMError, LLMToolCallFailed
+from app.llm.errors import LLMError, LLMRateLimited, LLMToolCallFailed
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class InvestigationResult(BaseModel):
     model: str = ""
     round_trips: int = 0
     duration_ms: int = 0
-    usage: dict[str, int] = Field(default_factory=dict)
+    usage: dict[str, Any] = Field(default_factory=dict)
 
 
 def _strip_code_fences(raw: str) -> str:
@@ -109,7 +109,7 @@ def run_investigation(
     schemas = registry.schemas()
     round_trips = 0
     model_used = provider.model_name or ""
-    accumulated_usage: dict[str, int] = {
+    accumulated_usage: dict[str, Any] = {
         "prompt_tokens": 0,
         "completion_tokens": 0,
         "total_tokens": 0,
@@ -178,6 +178,7 @@ def run_investigation(
 
     final_raw_text: str | None = None
     provider_to_local_id: dict[str, str] = {}
+    fallback_used: bool = False
 
     while round_trips < max_round_trips:
         if _timed_out():
@@ -195,8 +196,49 @@ def run_investigation(
         except LLMToolCallFailed as exc:
             err_dict: dict[str, Any] = {"code": exc.code, "message": exc.message}
             if exc.attempted_tool:
-                logger.warning("LLM tool call failed: attempted_tool=%s", exc.attempted_tool)
                 err_dict["details"] = {"attempted_tool": exc.attempted_tool}
+
+            # Final-answer fallback: when provider raises LLMToolCallFailed and attempted_tool is NOT a registered tool name,
+            # make ONE more provider call with NO tools offered and an appended user-role message:
+            # "Respond now with only the JSON answer object described in the system prompt. Do not call any tool."
+            # At most one fallback per run. Record fallback_used true inside AgentRun.usage and in the server log.
+            registered_tools = set(registry.tool_names)
+            if exc.attempted_tool and (exc.attempted_tool not in registered_tools) and not fallback_used:
+                fallback_used = True
+                logger.info(
+                    "LLM attempted unregistered tool '%s'; initiating final-answer fallback without tools",
+                    exc.attempted_tool,
+                )
+                fallback_messages = list(messages) + [
+                    LLMMessage(
+                        role="user",
+                        content="Respond now with only the JSON answer object described in the system prompt. Do not call any tool.",
+                    )
+                ]
+                try:
+                    fallback_response = provider.generate(
+                        system=SYSTEM_PROMPT,
+                        messages=fallback_messages,
+                        tools=None,
+                        max_output_tokens=max_output_tokens,
+                    )
+                    _record_usage(fallback_response.usage)
+                    accumulated_usage["fallback_used"] = True
+                    logger.info("Final-answer fallback succeeded: fallback_used=true")
+                    if fallback_response.model:
+                        model_used = fallback_response.model
+                    final_raw_text = fallback_response.text
+                    break
+                except LLMRateLimited:
+                    raise
+                except Exception as fb_exc:
+                    logger.warning(
+                        "Final-answer fallback call failed: %s; surfacing original LLMToolCallFailed",
+                        fb_exc,
+                    )
+
+            if exc.attempted_tool:
+                logger.warning("LLM tool call failed: attempted_tool=%s", exc.attempted_tool)
             return InvestigationResult(
                 status="failed",
                 answer_status="none",

@@ -98,7 +98,7 @@ The **Discovery** workspace transforms qualitative stakeholder interview notes i
 - **AI-Assisted Analysis:** Select one or more notes (up to 30,000 characters) and run `POST /api/engagements/{id}/discovery/analyse` to extract themes, symptoms, impacts, hypotheses, known facts, and candidate KPIs.
 - **Deterministic Post-Processing:** Verifies source quotes against notes text, validates number claims, checks hypothesis hedging, bans causal language in problem statements, and restricts candidate KPIs to the 16 approved metrics in the Groundwork metrics registry.
 - **Version History & Safeguards:** Maintains up to 5 version snapshots per engagement. Applying an AI draft over manually edited briefs requires explicit confirmation (`confirm_replace: true`).
-- **Discovery Token Limit (`LLM_DISCOVERY_MAX_OUTPUT_TOKENS`):** Default `4000` tokens to support full structured brief generation across all 13 sections.
+- **Discovery Token Limit (`LLM_DISCOVERY_MAX_OUTPUT_TOKENS`):** Default `6000` tokens to support full structured brief generation across all 13 sections.
 
 ## Uploading Data
 

@@ -256,3 +256,43 @@ def test_warnings_do_not_remove_block_content() -> None:
     assert len(warnings) >= 3  # unsupported_finding, causal_wording, ungrounded_number
     assert len(blocks) == 1
     assert blocks[0].text == original_text
+
+
+def test_number_inside_string_field_of_cited_result_is_grounded_and_not_in_uncited() -> None:
+    # Reproduces 0.4: figure '65.3%' appears in text field of cited get_findings
+    trace = [
+        _ok_call(
+            "c1",
+            "get_findings",
+            {
+                "findings": [
+                    {
+                        "id": "F-TRIAGE",
+                        "text": "Across 1971 tickets with valid triage and response timestamps, time before assignment represents 65.3% of aggregate first-response time and median time to assignment is 3.70 hours.",
+                        "value": 0.65,
+                    }
+                ]
+            },
+        )
+    ]
+    # When c1 is cited, 65.3% from the text field is grounded and does not trigger ungrounded_number
+    blocks_cited = [
+        AnswerBlock(
+            type="finding",
+            text="Across 1971 tickets with valid timestamps, the period before assignment accounts for 65.3% of the aggregate first-response time.",
+            evidence_call_ids=["c1"],
+        )
+    ]
+    warnings_cited = check_grounding(blocks_cited, trace)
+    assert not any(w.code == "ungrounded_number" for w in warnings_cited)
+
+    # When c1 is NOT cited, 65.3% from the string field does NOT trigger number_only_in_uncited_call
+    blocks_uncited = [
+        AnswerBlock(
+            type="hypothesis",
+            text="Pre-assignment waiting might be around 65.3% of total time.",
+            evidence_call_ids=[],
+        )
+    ]
+    warnings_uncited = check_grounding(blocks_uncited, trace)
+    assert not any(w.code == "number_only_in_uncited_call" for w in warnings_uncited)

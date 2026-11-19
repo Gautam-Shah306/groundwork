@@ -22,6 +22,7 @@ services:
       - ./data:/app/data
       - ./config:/app/config:ro
       - ./knowledge:/app/knowledge:ro
+      - ./backend/app:/app/app:ro
     ports:
       - "8000:8000"
 

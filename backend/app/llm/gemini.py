@@ -298,6 +298,7 @@ class GeminiProvider(LLMProvider):
         messages: list[LLMMessage],
         tools: list[ToolSchema] | None = None,
         max_output_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> LLMResponse:
         token_cap = (
             max_output_tokens
@@ -310,7 +311,7 @@ class GeminiProvider(LLMProvider):
         config = types.GenerateContentConfig(
             system_instruction=system,
             max_output_tokens=token_cap,
-            temperature=0.0,
+            temperature=temperature if temperature is not None else 0.0,
             tools=gemini_tools,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )

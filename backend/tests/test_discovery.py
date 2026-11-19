@@ -416,6 +416,36 @@ def test_verbatim_quote_verified_and_invented_quote_flagged() -> None:
     assert any(w["code"] == "quote_not_found" for w in warnings)
 
 
+def test_quote_verification_normalizes_dash_variants_and_special_chars() -> None:
+    # Reproduces class (e) normalization gap: U+2011 non-breaking hyphen and ellipsis character
+    brief = BriefSections(
+        themes=[
+            Item(
+                text="Operations",
+                source_quote="I lead day\u2011to\u2011day support operations here at Kora Living",
+            ),
+            Item(
+                text="Leadership",
+                source_quote="The leadership team assumed we were simply short\u2011handed",
+            ),
+            Item(
+                text="Complaints",
+                source_quote="Customer complaints\u2026 showing up in post\u2011purchase surveys",
+            ),
+        ]
+    )
+    notes = (
+        "I lead day-to-day support operations here at Kora Living. "
+        "The leadership team assumed we were simply short-handed. "
+        "Customer complaints... showing up in post-purchase surveys."
+    )
+    processed, warnings = postprocess_brief(brief, client_statement="", notes_text=notes)
+    for idx in range(3):
+        assert processed.themes[idx].quote_verified is True
+        assert "quote_not_found" not in processed.themes[idx].flags
+    assert not any(w["code"] == "quote_not_found" for w in warnings)
+
+
 # 19. test_missing_quote_flagged_for_sections_that_need_one
 def test_missing_quote_flagged_for_sections_that_need_one() -> None:
     brief = BriefSections(
@@ -514,7 +544,7 @@ def test_analysis_persisted_with_model_usage_and_warnings(discovery_app) -> None
 # 25. test_failed_analysis_persisted_with_error_and_no_secrets
 def test_failed_analysis_persisted_with_error_and_no_secrets(discovery_app) -> None:
     client, app, session_factory, eng_id, _ = discovery_app
-    secret_key = "gsk_super_confidential_secret_key_12345"
+    secret_key = "mock_super_confidential_secret_key_12345"
     app.state.settings.llm_api_key = secret_key
 
     mock_provider = MagicMock(spec=LLMProvider)
