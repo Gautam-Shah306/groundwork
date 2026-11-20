@@ -1111,4 +1111,49 @@ describe("AssistantPanel & Diagnostics integration", () => {
       expect(postCount).toBe(2);
     });
   });
+
+  it("21. unknown answer status renders safely without throwing", async () => {
+    const user = userEvent.setup();
+    const unknownStatusRun = makeRun({
+      id: 99,
+      question: "Unknown status investigation",
+      answer_status: "unsupported" as any,
+      answer_blocks: [
+        {
+          type: "finding",
+          text: "Some finding text with unknown status.",
+          evidence_call_ids: [],
+        },
+      ],
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/health")) {
+        return jsonResponse({
+          status: "ok",
+          version: "0.1.0",
+          llm_configured: true,
+          database_url_scheme: "sqlite",
+        });
+      }
+      if (url.includes("/api/engagements/1/assistant/runs?limit=")) {
+        return jsonResponse([unknownStatusRun]);
+      }
+      if (url.endsWith("/api/engagements/1/assistant/runs/99")) {
+        return jsonResponse(unknownStatusRun);
+      }
+      return jsonResponse([]);
+    });
+
+    render(<AssistantPanel engagementId={1} datasetId={10} />);
+
+    const historySection = await screen.findByLabelText("Previous investigations");
+    const runBtn = within(historySection).getByRole("button", {
+      name: /Unknown status investigation/i,
+    });
+    await user.click(runBtn);
+
+    expect(await screen.findByText("Some finding text with unknown status.")).toBeInTheDocument();
+  });
 });

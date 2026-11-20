@@ -1305,3 +1305,274 @@ export async function recordProposalDecision(
 
   return (await response.json()) as ProposalDecisionResponse;
 }
+
+export interface EvalRunSummary {
+  id: number;
+  engagement_id: number;
+  model: string;
+  sample_size: number;
+  status: "running" | "paused" | "completed" | "failed" | "cancelled";
+  config: {
+    sample_size: number;
+    drafts_sample?: number;
+    model?: string;
+    pacing_seconds?: number;
+  };
+  progress_done: number;
+  progress_total: number;
+  config_fingerprint: string;
+  started_at: string;
+  finished_at?: string | null;
+  created_at: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    provider_calls: number;
+    estimated_cost_usd?: number | null;
+  } | null;
+  error?: {
+    code: string;
+    message: string;
+  } | null;
+  results?: EvalResults;
+}
+
+export interface EvalResults {
+  summary: {
+    total_tickets: number;
+    completed: number;
+    failed: number;
+    category_accuracy: number;
+    category_accuracy_completed: number;
+    category_accuracy_wilson: [number, number];
+    lenient_category_accuracy: number;
+    priority_accuracy: number;
+    queue_accuracy: number;
+    reviewer_change_proxy: number;
+    category_accuracy_pct: number;
+    priority_accuracy_pct: number;
+    queue_accuracy_pct: number;
+    reviewer_change_proxy_pct: number;
+  };
+  per_category: Record<
+    string,
+    {
+      support: number;
+      predicted_count: number;
+      precision: number;
+      recall: number;
+      f1: number;
+    }
+  >;
+  macro_f1: number;
+  category_confusion_matrix: Record<string, Record<string, number>>;
+  priority_metrics: {
+    priority_accuracy: number;
+    confusion_matrix: Record<string, Record<string, number>>;
+    under_prioritised: number;
+    over_prioritised: number;
+    missed_high: { count: number; rate: number };
+    truth_high_no_prediction: { count: number; rate: number };
+    priority_errors_by_cause: {
+      signals_exact_but_priority_wrong: number;
+      signals_missed: number;
+      signals_spurious: number;
+      signals_both: number;
+      model_failure: number;
+    };
+  };
+  signals_metrics: {
+    micro_precision: number;
+    micro_recall: number;
+    micro_f1: number;
+    exact_set_match_rate: number;
+    per_signal: Record<string, any>;
+  };
+  slices: Array<{
+    name: string;
+    count: number;
+    category_accuracy: number;
+    priority_accuracy: number;
+    low_confidence: boolean;
+  }>;
+  failure_cases: Array<{
+    ticket_id: string;
+    subject?: string | null;
+    body_snippet: string;
+    true_category: string;
+    predicted_category?: string | null;
+    true_priority: string;
+    predicted_priority?: string | null;
+    true_signals: string[];
+    predicted_signals: string[];
+    reason: string;
+  }>;
+  draft_checks?: {
+    count: number;
+    total_flags: number;
+    flag_counts_by_code: Record<string, number>;
+    unflagged_rate: number;
+  } | null;
+}
+
+export interface EvalItem {
+  id: number;
+  run_id: number;
+  ticket_id: string;
+  status: "success" | "error";
+  error_code?: string | null;
+  predicted_category?: string | null;
+  predicted_secondary?: string | null;
+  predicted_signals: string[];
+  flags: Array<{ code: string; message: string; where: string }>;
+  predicted_priority?: string | null;
+  rule_id?: string | null;
+  predicted_queue?: string | null;
+  escalation: boolean;
+  usage: Record<string, any>;
+  duration_ms: number;
+  provider_calls: number;
+  draft?: {
+    reply: string;
+    flags: Array<{ code: string; message: string; where: string }>;
+    reviewer_note?: string | null;
+    policy_refs?: string[];
+  } | null;
+  created_at: string;
+}
+
+export interface EvalItemsListResponse {
+  items: EvalItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface CreateEvalRunPayload {
+  sample_size?: number;
+  model?: string;
+  drafts_sample?: number;
+}
+
+export async function fetchEvalRuns(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<EvalRunSummary[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load evaluation runs");
+  }
+  return (await response.json()) as EvalRunSummary[];
+}
+
+export async function fetchEvalRun(
+  engagementId: number,
+  runId: number,
+  signal?: AbortSignal
+): Promise<EvalRunSummary> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs/${runId}`),
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load evaluation run");
+  }
+  return (await response.json()) as EvalRunSummary;
+}
+
+export async function createEvalRun(
+  engagementId: number,
+  payload: CreateEvalRunPayload
+): Promise<EvalRunSummary> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to start evaluation run");
+  }
+  return (await response.json()) as EvalRunSummary;
+}
+
+export async function fetchEvalRunItems(
+  engagementId: number,
+  runId: number,
+  params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    failure_only?: boolean;
+  },
+  signal?: AbortSignal
+): Promise<EvalItemsListResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.page_size) query.set("page_size", String(params.page_size));
+  if (params?.status) query.set("status", params.status);
+  if (params?.failure_only) query.set("failure_only", "true");
+
+  const qs = query.toString();
+  const url = `/api/engagements/${engagementId}/evaluation/runs/${runId}/items${qs ? `?${qs}` : ""}`;
+  const response = await fetch(buildApiUrl(url), {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load evaluation run items");
+  }
+  return (await response.json()) as EvalItemsListResponse;
+}
+
+export async function resumeEvalRun(
+  engagementId: number,
+  runId: number
+): Promise<EvalRunSummary> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs/${runId}/resume`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to resume evaluation run");
+  }
+  return (await response.json()) as EvalRunSummary;
+}
+
+export async function cancelEvalRun(
+  engagementId: number,
+  runId: number
+): Promise<EvalRunSummary> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs/${runId}/cancel`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to cancel evaluation run");
+  }
+  return (await response.json()) as EvalRunSummary;
+}

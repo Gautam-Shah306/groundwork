@@ -22,10 +22,12 @@ from app.llm.fake import FakeProvider
 from app.models import Engagement, ProposalStatus, TriageProposal
 from app.triage.config import load_triage_config
 from app.triage.pipeline import run_triage_pipeline
+from app.agent.tools import ToolResult
 from app.triage.prompts import (
     ALLOWED_PLACEHOLDERS,
     build_classification_system_prompt,
     build_drafting_system_prompt,
+    extract_policy_headings,
     load_policies_text,
 )
 from app.triage.tools import (
@@ -953,3 +955,77 @@ def test_validation_failure_log_contains_locations_and_types_but_no_model_text(c
     assert "loc" in log_text
     assert "type" in log_text
     assert secret_marker not in log_text
+
+
+def test_draft_prompt_includes_exact_policy_heading_list_for_policy_refs() -> None:
+    policy_text = load_policies_text()
+    prompt = build_drafting_system_prompt(policy_text)
+    headings = extract_policy_headings(policy_text)
+    assert len(headings) >= 8
+    for h in headings:
+        assert f"- {h}" in prompt
+    assert "VALID POLICY SECTION HEADINGS:" in prompt
+    assert "In policy_refs, include ONLY exact section headings copied verbatim" in prompt
+
+
+def test_draft_prompt_forbids_assuming_delivery_zone() -> None:
+    policy_text = load_policies_text()
+    prompt = build_drafting_system_prompt(policy_text)
+    assert "When the policy gives different timelines or conditions for different situations" in prompt
+    assert "state each applicable timeline; never assume which applies" in prompt
+
+
+def test_draft_prompt_forbids_remedies_not_in_policy() -> None:
+    policy_text = load_policies_text()
+    prompt = build_drafting_system_prompt(policy_text)
+    assert "Never offer, name, or imply a remedy" in prompt
+    assert "unless the policy section for this situation states it" in prompt
+
+
+def test_draft_prompt_for_escalated_ticket_requires_brief_acknowledgment_without_commitments() -> None:
+    policy_text = load_policies_text()
+    prompt = build_drafting_system_prompt(policy_text, escalation=True, rule_id="R-LEGAL")
+    assert "CRITICAL ESCALATION DIRECTIVE (rule: R-LEGAL):" in prompt
+    assert "brief, polite acknowledgment" in prompt
+    assert "Make NO commitments, state NO timelines, and offer NO remedies" in prompt
+    assert "Escalated: needs team lead review" in prompt
+
+
+def test_pipeline_passes_escalation_flag_and_rule_id_to_draft_step(db_session, monkeypatch) -> None:
+    from unittest.mock import MagicMock
+    from app.triage import pipeline as pipeline_module
+
+    session, eng_id = db_session
+    mock_draft = MagicMock(return_value=(
+        ToolResult(call_id="c3", tool="draft_ticket_response", args={}, ok=True, data={}, duration_ms=10),
+        None,
+        [],
+        {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+    ))
+    monkeypatch.setattr(pipeline_module, "tool_draft_ticket_response", mock_draft)
+
+    fake_provider = FakeProvider([
+        LLMResponse(
+            text=json.dumps({
+                "category": "payment_issues",
+                "secondary_category": None,
+                "signals": [{"signal": "legal_or_chargeback_threat", "source_quote": "speak to my lawyer"}],
+                "rationale": "Customer mentions lawyer",
+            }),
+            tool_calls=[],
+        ),
+    ])
+
+    run_triage_pipeline(
+        db=session,
+        engagement_id=eng_id,
+        subject="I will sue",
+        body="I will speak to my lawyer.",
+        channel="chat",
+        provider=fake_provider,
+    )
+
+    assert mock_draft.call_count == 1
+    _, kwargs = mock_draft.call_args
+    assert kwargs.get("escalation") is True
+    assert kwargs.get("rule_id") == "R-LEGAL"

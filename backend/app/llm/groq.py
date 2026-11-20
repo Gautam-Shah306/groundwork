@@ -345,10 +345,12 @@ class GroqProvider(LLMProvider):
                 return LLMRateLimited(
                     f"LLM provider rate limit exceeded. Retry after {int(retry_after)}s.",
                     secrets=secrets,
+                    retry_after_seconds=retry_after,
                 )
             return LLMRateLimited(
                 "LLM provider rate limit reached. Wait a moment and retry your question.",
                 secrets=secrets,
+                retry_after_seconds=retry_after,
             )
         if status is not None and 400 <= status < 500:
             return LLMProviderError(

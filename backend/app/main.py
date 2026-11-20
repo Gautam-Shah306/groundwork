@@ -13,11 +13,13 @@ from app.api.datasets import router as datasets_router
 from app.api.diagnostics import router as diagnostics_router
 from app.api.discovery import router as discovery_router
 from app.api.engagements import router as engagements_router
+from app.api.evaluation import router as evaluation_router
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
 from app.api.triage import router as triage_router
 from app.config import Settings, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
+from app.evaluation.runner import mark_interrupted_eval_runs_paused
 from app.seed import seed_demo_data
 
 
@@ -32,10 +34,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         init_db(engine)
         with session_factory() as session:
             mark_stale_running_runs_failed(session)
+            mark_interrupted_eval_runs_paused(session)
             if resolved_settings.seed_on_start:
                 seed_demo_data(session)
         yield
         for thread in getattr(_app.state, "assistant_threads", []):
+            thread.join(timeout=2.0)
+        for thread in getattr(_app.state, "eval_threads", []):
             thread.join(timeout=2.0)
         engine.dispose()
 
@@ -46,10 +51,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     if settings is not None:
         application.state.settings = settings
-        application.dependency_overrides[get_settings] = lambda: settings
     application.state.engine = engine
     application.state.session_factory = session_factory
     application.state.assistant_threads = []
+    application.state.eval_threads = []
 
     application.add_middleware(
         CORSMiddleware,
@@ -68,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(discovery_router)
     application.include_router(assistant_router)
     application.include_router(triage_router)
+    application.include_router(evaluation_router)
     return application
 
 

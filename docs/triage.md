@@ -190,7 +190,7 @@ Stored in `triage_proposals` table:
 
 ## 8. Limitations
 
-1. **Heuristic Flags**: Post-processing review flags are deterministic sanity checks. They detect unverified numbers and overpromising words, but cannot substitute for human review.
-2. **Quote Verification Scope**: Verifying that a quote exists in the ticket proves that the customer wrote the phrase, not that the model interpreted customer intent accurately.
+1. **Heuristic Flags**: Post-processing review flags are deterministic sanity checks. They detect unverified numbers and overpromising words, but cannot substitute for human review. The review flags do not detect remedies beyond policy, so an empty flag list does not mean a reply is policy-safe and human review remains the control.
+2. **Quote Verification Scope**: Signal quote verification proves a quote exists verbatim in the ticket, not that it was interpreted correctly.
 3. **Language Scope**: Draft responses are generated in English only. Non-English tickets (e.g. Hinglish) are flagged for human operator handling.
 4. **No Customer Dispatch**: The application contains no email or SMS dispatch code (`smtplib`, Twilio, SendGrid, etc.). The agent proposes; the human decides.

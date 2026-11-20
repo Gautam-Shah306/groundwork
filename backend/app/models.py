@@ -77,6 +77,14 @@ class AnswerStatus(str, enum.Enum):
     none = "none"
 
 
+class EvalRunStatus(str, enum.Enum):
+    running = "running"
+    paused = "paused"
+    completed = "completed"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
 class Base(DeclarativeBase):
     """Declarative base for all Groundwork tables."""
 
@@ -409,6 +417,7 @@ class Kpi(Base):
 
 class EvalRun(Base):
     __tablename__ = "eval_runs"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     engagement_id: Mapped[int] = mapped_column(
@@ -419,10 +428,62 @@ class EvalRun(Base):
     )
     model: Mapped[str] = mapped_column(String(120), nullable=False)
     sample_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[EvalRunStatus] = mapped_column(
+        SAEnum(EvalRunStatus, native_enum=False),
+        nullable=False,
+        default=EvalRunStatus.running,
+    )
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    progress_done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    progress_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     results: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
 
     engagement: Mapped[Engagement] = relationship(back_populates="eval_runs")
+    items: Mapped[list[EvalItem]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class EvalItem(Base):
+    __tablename__ = "eval_items"
+    __table_args__ = (
+        UniqueConstraint("run_id", "ticket_id", name="uq_eval_items_run_ticket"),
+        {"sqlite_autoincrement": True},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("eval_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ticket_id: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="success")
+    error_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    predicted_category: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    predicted_secondary: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    predicted_signals: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    flags: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    predicted_priority: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    rule_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    predicted_queue: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    escalation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    usage: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    provider_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    draft: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+
+    run: Mapped[EvalRun] = relationship(back_populates="items")
 
 
 class PilotSimulation(Base):

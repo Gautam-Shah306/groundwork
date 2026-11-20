@@ -11,6 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.health import resolve_settings
 from app.audit import record_audit_event
 from app.config import Settings, get_settings
 from app.db import get_db
@@ -71,7 +72,7 @@ def create_proposal_endpoint(
     payload: CreateProposalRequest,
     response: Response,
     db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(resolve_settings),
 ) -> Any:
     """Submit a ticket to generate an AI triage proposal.
 

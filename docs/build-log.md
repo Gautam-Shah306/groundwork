@@ -307,6 +307,58 @@ backend\.venv\Scripts\python.exe scripts/verify_triage_live.py
 - No git commits, staging, or pushes performed (per R12).
 
 
+## Prompt 9 — Triage Evaluation Benchmark, Deterministic Scoring & Agent Evaluation Tab (2026-11-20)
+
+### What was built
+- **Part 0 (Prompt 8b Review Open Items):**
+  - **0.1 Invariants & Hygiene:** Verified clean working tree (except Prompt 9 scope), tags `p01`–`p08`, `p06b`, `p08b` present, `.env` untracked, `local/` git-ignored, no `frontend/src/tests/` directory.
+  - **0.2 Final-Answer Fallback:** Verified fallback in `backend/app/agent/loop.py` lines 360–394 (retries once without tools when `LLMToolCallFailed` is raised on an unregistered tool name, adds final-answer nudge prompt, sets `fallback_used: true`, at most one per run, surfaces original error on repeated failure or registered tool). Verified 5 tests in `test_agent_loop.py`. Added test `test_assistant_worker_unexpected_exception_logs_and_marks_failed` in `test_assistant_api.py` covering the logger in `assistant.py`.
+  - **0.3 Grounding Evidence:** Ran git log and git diff p07 on `grounding.py`. Reported lines 124–129 and 284 where numbers inside text fields of CITED tool calls are scanned, and lines 216–218 and 293 where uncited calls are strictly numeric-only. Documented AgentRun 15 F-TRIAGE observation text `65.3%` and serialised evidence value `0.65`.
+  - **0.4 `answer_status` Enum:** Standardized closed enum `AnswerStatus` (`structured`, `unstructured`, `none`) across `models.py`, `loop.py`, `assistant.py`, `api.ts`, and docs. Added backend test `test_answer_status_values_are_a_closed_documented_set` and frontend fallback test in `AssistantPanel.test.tsx`.
+  - **0.5 Production Code Hygiene:** Removed `application.dependency_overrides[get_settings]` from `backend/app/main.py`. Added test `test_production_app_has_no_dependency_overrides` in `test_health.py`.
+  - **0.6 Draft Prompt Tightening:** Runtime extraction of exact section headings from `knowledge/policies.md` as allowed `policy_refs`; prohibition against assuming delivery zone; prohibition against unstated remedies; escalation flag and rule ID passed to draft step yielding brief polite acknowledgment without commitments and `reviewer_note: "Escalated: needs team lead review"`. Added review flag limitations to `docs/triage.md`. Added 5 unit tests in `test_triage_pipeline.py`.
+  - **0.7 Live Re-Checks:** Executed smoke check, Assistant run on 'Why are customers waiting so long?', Discovery analysis quote verification and classification of remaining quotes (including dash normalization fix in `normalize_text_for_comparison`), and 3 chat triage tickets (legal chargeback escalation, prompt injection avoidance, Hinglish delivery delay) with zero unstated remedies.
+- **Part A (Documentation & Configuration):**
+  - Created `docs/evaluation.md` documenting purpose, scope, held-out test set integrity rule, exact formulas for all metrics (strict/lenient category accuracy, Wilson 95% score interval with z=1.96, priority accuracy, queue routing accuracy, reviewer change proxy, micro/macro F1), failure-case severity ranking, subgroup slice definitions, and limitations.
+  - Added evaluation settings in `.env.example`, `docker-compose.yml`, and `backend/app/config.py` (`EVAL_PACING_SECONDS=2`, `EVAL_MAX_RATE_LIMIT_WAITS=5`, `EVAL_MAX_WAIT_SECONDS=120`). Updated `README.md`. Added test `test_eval_settings_defaults`.
+- **Part B (Triage Evaluation Backend):**
+  - **B1 (Shared Service):** Created `backend/app/triage/service.py` (`classify_and_prioritise`), refactored `pipeline.py`.
+  - **B2 (Dataset & Stratified Sampler):** Created `backend/app/evaluation/dataset.py` (`EvalTicket`, `load_eval_tickets`, `select_sample` with seed 42 preserving category distribution, SHA-256 fingerprinting for dataset and configuration). Added 18 unit tests in `test_evaluation_dataset.py`.
+  - **B3 (Persistence & Schema):** Added `EvalRunStatus`, `EvalRun`, and `EvalItem` in `backend/app/models.py`. Added `EVAL_RUNS_COLUMNS` and unique index `uq_eval_items_run_ticket` in `backend/app/db.py`.
+  - **B4 (Pure Evaluation Metrics):** Created `backend/app/evaluation/metrics.py` (Wilson score interval, 3x3 priority confusion matrix + no_prediction, priority errors by cause, signals micro/macro precision/recall/F1, exact set match rate, 5 subgroup slices with low-confidence flag for n < 30, top 5 failure cases with ticket ID tie-breaking). Added 18 unit tests in `test_evaluation_metrics.py`.
+  - **B5 (Runner & API Endpoints):** Created `backend/app/evaluation/runner.py` (`EvaluationRunner`, rate-limit backoff, 2s pacing, stop/resume events, checkpointing, startup hook `mark_interrupted_eval_runs_paused`) and `backend/app/api/evaluation.py` (POST /runs, GET /runs, GET /runs/{id}, GET /runs/{id}/items, POST /runs/{id}/resume, POST /runs/{id}/cancel). Added 8 runner tests and 8 API tests.
+- **Part C (Frontend Agent Evaluation Tab):**
+  - Updated `formatAuditSentence` in `frontend/src/lib/format.ts` for evaluation audit actions.
+  - Added evaluation API types and client methods in `frontend/src/lib/api.ts`.
+  - Built 8 accessible UI components in `frontend/src/components/evaluation/`: `RunControls`, `ProgressCard`, `ResultsSummary` (6 KPI tiles + Wilson interval), `ConfusionMatrix` (diagonal highlighted, off-diagonal warning, macro-F1), `SlicesTable` (5 slices, low-confidence warning pills), `FailureCasesList` (top 5 severity cases + expandable full failure list), `RunHistory` (archive table with status pills and active switcher), and `EvaluationTab` (polling orchestrator with audit logging).
+  - Updated `PrototypesPage.tsx` with accessible WAI-ARIA tablist (`Triage workspace` and `Agent evaluation`) and URL query param synchronization (`?tab=evaluation`).
+  - Added 25 Vitest tests in `frontend/src/__tests__/Evaluation.test.tsx`.
+- **Integrity Rule & Secret Hygiene:**
+  - `data/eval_tickets.json`, `config/queues.yaml`, and `config/priority_rules.yaml` remained strictly untouched.
+  - Zero API keys in git diff, docker logs, or database rows.
+  - Zero ticket body or draft text in `EvalItem` or `AuditLog`.
+
+### Test Results & Verification
+- **Backend:** 386 passed, 0 failed in 156.43s; test coverage 92% (gate >= 90%).
+- **Frontend:** 155 passed across 9 test files in 30.64s; `npm run typecheck` 0 errors; `npm run build` completed cleanly.
+
+### How to run it
+```powershell
+# Run full backend test suite with coverage natively
+backend\.venv\Scripts\python.exe -m pytest backend/tests/ --cov=backend/app --cov-report=term-missing
+
+# Run frontend tests, typecheck, and build in Docker
+docker compose exec -T frontend npm run test -- --run
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+```
+
+### What was not done
+- Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).
+
+
 ## Prompt 8b — Triage Conformance, Invariant Audit, Non-Fatal Drafting & Live Re-Verification (2026-11-20)
 
 ### What was built
@@ -341,6 +393,58 @@ backend\.venv\Scripts\python.exe scripts/verify_triage_live.py
 backend\.venv\Scripts\python.exe -m pytest --cov=app --cov-report=term-missing
 
 # Run frontend tests, typecheck, and build inside Docker
+docker compose exec -T frontend npm run test -- --run
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+```
+
+### What was not done
+- Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).
+
+
+## Prompt 9 — Triage Evaluation Benchmark, Deterministic Scoring & Agent Evaluation Tab (2026-11-20)
+
+### What was built
+- **Part 0 (Prompt 8b Review Open Items):**
+  - **0.1 Invariants & Hygiene:** Verified clean working tree (except Prompt 9 scope), tags `p01`–`p08`, `p06b`, `p08b` present, `.env` untracked, `local/` git-ignored, no `frontend/src/tests/` directory.
+  - **0.2 Final-Answer Fallback:** Verified fallback in `backend/app/agent/loop.py` lines 360–394 (retries once without tools when `LLMToolCallFailed` is raised on an unregistered tool name, adds final-answer nudge prompt, sets `fallback_used: true`, at most one per run, surfaces original error on repeated failure or registered tool). Verified 5 tests in `test_agent_loop.py`. Added test `test_assistant_worker_unexpected_exception_logs_and_marks_failed` in `test_assistant_api.py` covering the logger in `assistant.py`.
+  - **0.3 Grounding Evidence:** Ran git log and git diff p07 on `grounding.py`. Reported lines 124–129 and 284 where numbers inside text fields of CITED tool calls are scanned, and lines 216–218 and 293 where uncited calls are strictly numeric-only. Documented AgentRun 15 F-TRIAGE observation text `65.3%` and serialised evidence value `0.65`.
+  - **0.4 `answer_status` Enum:** Standardized closed enum `AnswerStatus` (`structured`, `unstructured`, `none`) across `models.py`, `loop.py`, `assistant.py`, `api.ts`, and docs. Added backend test `test_answer_status_values_are_a_closed_documented_set` and frontend fallback test in `AssistantPanel.test.tsx`.
+  - **0.5 Production Code Hygiene:** Removed `application.dependency_overrides[get_settings]` from `backend/app/main.py`. Added test `test_production_app_has_no_dependency_overrides` in `test_health.py`.
+  - **0.6 Draft Prompt Tightening:** Runtime extraction of exact section headings from `knowledge/policies.md` as allowed `policy_refs`; prohibition against assuming delivery zone; prohibition against unstated remedies; escalation flag and rule ID passed to draft step yielding brief polite acknowledgment without commitments and `reviewer_note: "Escalated: needs team lead review"`. Added review flag limitations to `docs/triage.md`. Added 5 unit tests in `test_triage_pipeline.py`.
+  - **0.7 Live Re-Checks:** Executed smoke check, Assistant run on 'Why are customers waiting so long?', Discovery analysis quote verification and classification of remaining quotes (including dash normalization fix in `normalize_text_for_comparison`), and 3 chat triage tickets (legal chargeback escalation, prompt injection avoidance, Hinglish delivery delay) with zero unstated remedies.
+- **Part A (Documentation & Configuration):**
+  - Created `docs/evaluation.md` documenting purpose, scope, held-out test set integrity rule, exact formulas for all metrics (strict/lenient category accuracy, Wilson 95% score interval with z=1.96, priority accuracy, queue routing accuracy, reviewer change proxy, micro/macro F1), failure-case severity ranking, subgroup slice definitions, and limitations.
+  - Added evaluation settings in `.env.example`, `docker-compose.yml`, and `backend/app/config.py` (`EVAL_PACING_SECONDS=2`, `EVAL_MAX_RATE_LIMIT_WAITS=5`, `EVAL_MAX_WAIT_SECONDS=120`). Updated `README.md`. Added test `test_eval_settings_defaults`.
+- **Part B (Triage Evaluation Backend):**
+  - **B1 (Shared Service):** Created `backend/app/triage/service.py` (`classify_and_prioritise`), refactored `pipeline.py`.
+  - **B2 (Dataset & Stratified Sampler):** Created `backend/app/evaluation/dataset.py` (`EvalTicket`, `load_eval_tickets`, `select_sample` with seed 42 preserving category distribution, SHA-256 fingerprinting for dataset and configuration). Added 18 unit tests in `test_evaluation_dataset.py`.
+  - **B3 (Persistence & Schema):** Added `EvalRunStatus`, `EvalRun`, and `EvalItem` in `backend/app/models.py`. Added `EVAL_RUNS_COLUMNS` and unique index `uq_eval_items_run_ticket` in `backend/app/db.py`.
+  - **B4 (Pure Evaluation Metrics):** Created `backend/app/evaluation/metrics.py` (Wilson score interval, 3x3 priority confusion matrix + no_prediction, priority errors by cause, signals micro/macro precision/recall/F1, exact set match rate, 5 subgroup slices with low-confidence flag for n < 30, top 5 failure cases with ticket ID tie-breaking). Added 18 unit tests in `test_evaluation_metrics.py`.
+  - **B5 (Runner & API Endpoints):** Created `backend/app/evaluation/runner.py` (`EvaluationRunner`, rate-limit backoff, 2s pacing, stop/resume events, checkpointing, startup hook `mark_interrupted_eval_runs_paused`) and `backend/app/api/evaluation.py` (POST /runs, GET /runs, GET /runs/{id}, GET /runs/{id}/items, POST /runs/{id}/resume, POST /runs/{id}/cancel). Added 8 runner tests and 8 API tests.
+- **Part C (Frontend Agent Evaluation Tab):**
+  - Updated `formatAuditSentence` in `frontend/src/lib/format.ts` for evaluation audit actions.
+  - Added evaluation API types and client methods in `frontend/src/lib/api.ts`.
+  - Built 8 accessible UI components in `frontend/src/components/evaluation/`: `RunControls`, `ProgressCard`, `ResultsSummary` (6 KPI tiles + Wilson interval), `ConfusionMatrix` (diagonal highlighted, off-diagonal warning, macro-F1), `SlicesTable` (5 slices, low-confidence warning pills), `FailureCasesList` (top 5 severity cases + expandable full failure list), `RunHistory` (archive table with status pills and active switcher), and `EvaluationTab` (polling orchestrator with audit logging).
+  - Updated `PrototypesPage.tsx` with accessible WAI-ARIA tablist (`Triage workspace` and `Agent evaluation`) and URL query param synchronization (`?tab=evaluation`).
+  - Added 25 Vitest tests in `frontend/src/__tests__/Evaluation.test.tsx`.
+- **Integrity Rule & Secret Hygiene:**
+  - `data/eval_tickets.json`, `config/queues.yaml`, and `config/priority_rules.yaml` remained strictly untouched.
+  - Zero API keys in git diff, docker logs, or database rows.
+  - Zero ticket body or draft text in `EvalItem` or `AuditLog`.
+
+### Test Results & Verification
+- **Backend:** 386 passed, 0 failed in 156.43s; test coverage 92% (gate >= 90%).
+- **Frontend:** 155 passed across 9 test files in 30.64s; `npm run typecheck` 0 errors; `npm run build` completed cleanly.
+
+### How to run it
+```powershell
+# Run full backend test suite with coverage natively
+backend\.venv\Scripts\python.exe -m pytest backend/tests/ --cov=backend/app --cov-report=term-missing
+
+# Run frontend tests, typecheck, and build in Docker
 docker compose exec -T frontend npm run test -- --run
 docker compose exec -T frontend npm run typecheck
 docker compose exec -T frontend npm run build

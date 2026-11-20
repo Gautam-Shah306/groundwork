@@ -51,6 +51,18 @@ TRIAGE_PROPOSALS_COLUMNS: dict[str, str] = {
     "edited": "BOOLEAN DEFAULT 0",
 }
 
+EVAL_RUNS_COLUMNS: dict[str, str] = {
+    "status": "VARCHAR(30) DEFAULT 'running'",
+    "config": "JSON",
+    "progress_done": "INTEGER DEFAULT 0",
+    "progress_total": "INTEGER DEFAULT 0",
+    "error": "JSON",
+    "usage": "JSON",
+    "config_fingerprint": "VARCHAR(64) DEFAULT ''",
+    "started_at": "DATETIME",
+    "finished_at": "DATETIME",
+}
+
 
 def ensure_columns(engine: Engine, table: str, columns: dict[str, str]) -> None:
     """Add columns to an existing table if they are missing (column-exists guard)."""
@@ -75,11 +87,16 @@ def init_db(engine: Engine) -> None:
     Base.metadata.create_all(bind=engine)
     ensure_columns(engine, "agent_runs", {"usage": "JSON"})
     ensure_columns(engine, "triage_proposals", TRIAGE_PROPOSALS_COLUMNS)
+    ensure_columns(engine, "eval_runs", EVAL_RUNS_COLUMNS)
     with engine.connect() as conn:
         if engine.dialect.name == "sqlite":
             conn.exec_driver_sql(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_triage_proposals_eng_ticket_hash "
                 "ON triage_proposals (engagement_id, ticket_hash)"
+            )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_eval_items_run_ticket "
+                "ON eval_items (run_id, ticket_id)"
             )
             conn.commit()
 

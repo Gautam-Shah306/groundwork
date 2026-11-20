@@ -20,7 +20,15 @@ from sqlalchemy.orm import Session
 
 from app.agent.tools import ToolError, ToolResult
 from app.llm.base import LLMMessage, LLMProvider, LLMResponse
-from app.llm.errors import LLMError, LLMOutputTruncated, LLMRateLimited, LLMTimeout
+from app.llm.errors import (
+    LLMAuthError,
+    LLMError,
+    LLMModelNotFound,
+    LLMOutputTruncated,
+    LLMQuotaExhausted,
+    LLMRateLimited,
+    LLMTimeout,
+)
 from app.models import ProposalStatus, TriageProposal
 from app.text_utils import compute_ticket_hash, neutralize_delimiter, verify_quote
 from app.triage.config import TriageConfig
@@ -254,7 +262,14 @@ def tool_classify_ticket(
         }
         return result, parsed, flags, usage
 
-    except (LLMOutputTruncated, LLMTimeout, LLMRateLimited):
+    except (
+        LLMOutputTruncated,
+        LLMTimeout,
+        LLMRateLimited,
+        LLMQuotaExhausted,
+        LLMAuthError,
+        LLMModelNotFound,
+    ):
         raise
     except Exception as exc:
         dur_ms = int(round((time.time() - t0) * 1000))
@@ -334,6 +349,8 @@ def tool_draft_ticket_response(
     policy_text: str,
     provider: LLMProvider,
     max_output_tokens: int | None = None,
+    escalation: bool = False,
+    rule_id: str | None = None,
 ) -> tuple[ToolResult, DraftOutput | None, list[ReviewFlag], dict[str, Any]]:
     """Execute response drafting grounded in policy and ticket content."""
     t0 = time.time()
@@ -343,6 +360,7 @@ def tool_draft_ticket_response(
         "channel": channel,
         "category": category,
         "priority": priority,
+        "escalation": escalation,
     }
 
     subject_safe = neutralize_delimiter(subject or "", "</ticket>")
@@ -352,7 +370,11 @@ def tool_draft_ticket_response(
         f"Subject: {subject_safe}\nBody:\n{body_safe}\n</ticket>"
     )
 
-    system_prompt = build_drafting_system_prompt(policy_text)
+    system_prompt = build_drafting_system_prompt(
+        policy_text,
+        escalation=escalation,
+        rule_id=rule_id,
+    )
     messages = [LLMMessage(role="user", content=ticket_payload)]
 
     try:

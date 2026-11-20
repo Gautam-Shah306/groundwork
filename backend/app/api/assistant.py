@@ -78,7 +78,7 @@ class AgentRunResponse(BaseModel):
     dataset_id: int
     question: str
     status: str
-    answer_status: str
+    answer_status: AnswerStatus
     answer_blocks: list[dict[str, Any]]
     tool_trace: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
@@ -233,7 +233,7 @@ def _execute_run_in_background(
         run.finished_at = finished
         run.duration_ms = result.duration_ms
         db.commit()
-    except Exception as exc:  # pragma: no cover - defensive worker guard
+    except Exception as exc:
         logger.exception("Assistant background worker failed: %s", exc)
         try:
             db.rollback()

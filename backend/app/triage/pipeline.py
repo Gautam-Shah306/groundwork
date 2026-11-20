@@ -27,6 +27,7 @@ from app.llm.errors import LLMError, LLMOutputTruncated, LLMTimeout
 from app.models import TriageProposal
 from app.triage.config import TriageConfig, load_triage_config
 from app.triage.prompts import load_policies_text
+from app.triage.service import TriageTicketInput, classify_and_prioritise
 from app.triage.tools import (
     tool_classify_ticket,
     tool_create_triage_proposal,
@@ -72,51 +73,40 @@ def run_triage_pipeline(
             accumulated_usage["total_tokens"] += u.get("total_tokens") or 0
 
     # -------------------------------------------------------------
-    # Step 1: classify_ticket (c1) - FATAL on failure
+    # Step 1 & 2: classify_and_prioritise (c1, c2) - Shared triage logic
     # -------------------------------------------------------------
     if _timed_out():
         raise LLMTimeout("Triage pipeline timed out before classification.")
 
-    res_c1, classification_out, flags_c1, usage_c1 = tool_classify_ticket(
-        "c1",
-        subject=subject,
-        body=body,
-        channel=channel,
+    ticket_in = TriageTicketInput(subject=subject, body=body, channel=channel)
+    res_cp = classify_and_prioritise(
+        ticket_in,
         provider=provider,
         config=triage_config,
+        call_id_prefix="c",
         max_output_tokens=max_output_tokens,
     )
-    tool_trace.append(res_c1)
-    _add_usage(usage_c1)
+    for t_res in res_cp.tool_trace:
+        tool_trace.append(t_res)
+    _add_usage(res_cp.usage)
 
-    if not res_c1.ok or classification_out is None:
-        err_msg = res_c1.error.message if res_c1.error else "Classification failed."
-        err_code = res_c1.error.code if res_c1.error else "classification_failed"
+    if res_cp.error is not None or res_cp.category is None:
+        err_msg = res_cp.error.get("message", "Classification failed.") if res_cp.error else "Classification failed."
+        err_code = res_cp.error.get("code", "classification_failed") if res_cp.error else "classification_failed"
         if err_code == "llm_output_truncated":
             raise LLMOutputTruncated(err_msg)
         raise ValueError(f"Classification failed: {err_msg}")
 
-    for f in flags_c1:
-        combined_flags.append(f.model_dump(mode="json"))
-
-    extracted_signals = [s.signal for s in classification_out.signals]
-    serialized_signals = [s.model_dump(mode="json") for s in classification_out.signals]
-
-    # -------------------------------------------------------------
-    # Step 2: recommend_priority (c2) - DETERMINISTIC
-    # -------------------------------------------------------------
-    if _timed_out():
-        raise LLMTimeout("Triage pipeline timed out before priority evaluation.")
-
-    res_c2, priority_decision, rule_definition, queue, escalation = tool_recommend_priority(
-        "c2",
-        signals=extracted_signals,
-        category=classification_out.category,
-        config=triage_config,
-    )
-    tool_trace.append(res_c2)
-
-    priority_val = str(priority_decision.priority.value if hasattr(priority_decision.priority, "value") else priority_decision.priority)
+    combined_flags.extend(res_cp.flags)
+    category = res_cp.category
+    secondary_category = res_cp.secondary
+    serialized_signals = res_cp.signals
+    priority_val = str(res_cp.priority)
+    rule_id = res_cp.rule_id
+    rule_definition = res_cp.rule_definition
+    rationale = res_cp.rationale
+    queue = res_cp.queue
+    escalation = res_cp.escalation
 
     # -------------------------------------------------------------
     # Step 3: draft_ticket_response (c3) - NON-FATAL
@@ -141,11 +131,13 @@ def run_triage_pipeline(
                 subject=subject,
                 body=body,
                 channel=channel,
-                category=classification_out.category,
+                category=category,
                 priority=priority_val,
                 policy_text=policy_text,
                 provider=provider,
                 max_output_tokens=max_output_tokens,
+                escalation=escalation,
+                rule_id=rule_id,
             )
             tool_trace.append(res_c3)
             _add_usage(usage_c3)
@@ -185,15 +177,15 @@ def run_triage_pipeline(
         subject=subject,
         body=body,
         channel=channel,
-        category=classification_out.category,
-        secondary_category=classification_out.secondary_category,
+        category=category,
+        secondary_category=secondary_category,
         priority=priority_val,
         queue=queue,
         escalation=escalation,
-        rule_id=priority_decision.rule_id,
+        rule_id=rule_id,
         rule_definition=rule_definition,
         signals=serialized_signals,
-        rationale=classification_out.rationale,
+        rationale=rationale,
         draft_reply=draft_reply,
         policy_refs=policy_refs,
         reviewer_note=reviewer_note,

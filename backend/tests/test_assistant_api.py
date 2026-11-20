@@ -496,3 +496,31 @@ def test_engagement_delete_removes_runs_but_dataset_delete_keeps_them(tmp_path) 
         assert del_eng.status_code == 204
         with app.state.session_factory() as session:
             assert session.get(AgentRun, run_id) is None
+
+
+def test_assistant_worker_unexpected_exception_logs_and_marks_failed(tmp_path, monkeypatch) -> None:
+    from unittest.mock import patch
+
+    provider = FakeProvider([], model_name="fake-model")
+    app, _ = _make_app(tmp_path, db_name="t13_worker_fail.db", provider=provider)
+    with patch("app.api.assistant.run_investigation", side_effect=RuntimeError("Unexpected worker failure")):
+        with TestClient(app) as client:
+            _load_sample(client, engagement_id=1)
+            post = client.post(
+                "/api/engagements/1/assistant/runs",
+                json={"question": "Trigger worker exception"},
+            )
+            assert post.status_code == 202
+            run_id = post.json()["run_id"]
+            final = _poll_until_done(client, 1, run_id)
+            assert final["status"] == "failed"
+            assert final["error"]["code"] == "run_execution_error"
+            assert "Unexpected worker failure" in final["error"]["message"]
+
+
+def test_answer_status_values_are_a_closed_documented_set() -> None:
+    expected = {"structured", "unstructured", "none"}
+    actual = {e.value for e in AnswerStatus}
+    assert actual == expected
+    # Ensure no unsupported values exist in the enum
+    assert "unsupported" not in actual

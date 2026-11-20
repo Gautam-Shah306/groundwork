@@ -63,6 +63,17 @@ class LLMTimeout(LLMError):
 class LLMRateLimited(LLMError):
     code = "llm_rate_limited"
 
+    def __init__(
+        self,
+        message: str = "LLM provider rate limit reached. Wait a moment and retry your question.",
+        *,
+        code: str | None = None,
+        secrets: Sequence[str] = (),
+        retry_after_seconds: float | None = None,
+    ) -> None:
+        super().__init__(message, code=code, secrets=secrets)
+        self.retry_after_seconds = retry_after_seconds
+
 
 class LLMAuthError(LLMError):
     code = "llm_auth_error"

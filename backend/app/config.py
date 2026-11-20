@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     seed_on_start: bool = False
 
+    eval_pacing_seconds: int = 2
+    eval_max_rate_limit_waits: int = 3
+    eval_max_wait_seconds: int = 120
+
     @property
     def llm_configured(self) -> bool:
         """Return whether a supported LLM provider, API key, and model are all configured."""

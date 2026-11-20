@@ -155,6 +155,13 @@ def test_discovery_max_output_tokens_default_is_6000() -> None:
     assert settings.llm_discovery_max_output_tokens == 6000
 
 
+def test_eval_settings_defaults() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.eval_pacing_seconds == 2
+    assert settings.eval_max_rate_limit_waits == 3
+    assert settings.eval_max_wait_seconds == 120
+
+
 def test_app_starts_without_llm_key(monkeypatch, tmp_path) -> None:
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.delenv("LLM_MODEL", raising=False)
@@ -168,3 +175,11 @@ def test_app_starts_without_llm_key(monkeypatch, tmp_path) -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["llm_configured"] is False
+
+
+def test_production_app_has_no_dependency_overrides() -> None:
+    application = create_app()
+    assert len(application.dependency_overrides) == 0
+    custom_settings = Settings(_env_file=None)
+    app_with_custom = create_app(custom_settings)
+    assert len(app_with_custom.dependency_overrides) == 0

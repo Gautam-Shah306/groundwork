@@ -143,8 +143,21 @@ export function formatAuditSentence(entry: AuditLogEntry): string {
     brief: "problem brief",
     dataset: "dataset",
     proposal: "triage proposal",
+    eval_run: "evaluation run",
   };
   const entityLabel = entityLabelMap[entry.entity_type] ?? entry.entity_type;
+
+  if (entry.entity_type === "eval_run" || entry.action.startsWith("eval_run_")) {
+    const actionLabelMap: Record<string, string> = {
+      eval_run_started: "started evaluation run",
+      eval_run_completed: "completed evaluation run",
+      eval_run_paused: "paused evaluation run",
+      eval_run_resumed: "resumed evaluation run",
+      eval_run_cancelled: "cancelled evaluation run",
+    };
+    const act = actionLabelMap[entry.action] ?? entry.action;
+    return `${entry.actor} ${act} #${entry.entity_id}`;
+  }
 
   const detailName =
     typeof entry.details?.name === "string" && entry.details.name.trim()

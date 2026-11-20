@@ -194,6 +194,29 @@ def _extract_status_code(exc: Exception) -> int | None:
     return None
 
 
+def _extract_retry_after(exc: Exception) -> float | None:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) if response else None
+    if not headers or not hasattr(headers, "get"):
+        return None
+
+    retry_ms = headers.get("retry-after-ms")
+    if retry_ms:
+        try:
+            return float(retry_ms) / 1000.0
+        except (ValueError, TypeError):
+            pass
+
+    retry_sec = headers.get("retry-after")
+    if retry_sec:
+        try:
+            return float(retry_sec)
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
+
 def _is_timeout_error(exc: Exception) -> bool:
     if isinstance(exc, (TimeoutError, httpx.TimeoutException)):
         return True
@@ -259,9 +282,11 @@ class GeminiProvider(LLMProvider):
                 secrets=secrets,
             )
         if status == 429:
+            retry_after = _extract_retry_after(exc)
             return LLMRateLimited(
                 "LLM provider rate limit reached. Wait a moment and retry your question.",
                 secrets=secrets,
+                retry_after_seconds=retry_after,
             )
         if status is not None and 400 <= status < 500:
             return LLMProviderError(

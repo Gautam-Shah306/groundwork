@@ -139,6 +139,17 @@ Groundwork includes a contextual **Investigation assistant** on the Diagnostics 
 - **Never commit `.env` or your API key:** `.env` is git-ignored; never paste keys into docs, commits, issues, or logs.
 - **Behaviour without a key:** Groundwork starts and runs normally with `LLM_API_KEY` or `LLM_MODEL` unset. `/api/health` reports `llm_configured: false` (without exposing keys or model names), all deterministic Diagnostics screens work normally, and the Assistant panel displays setup guidance with input disabled.
 
+## Evaluation
+
+Groundwork provides an automated, resumable evaluation suite to benchmark the Support Triage pipeline against 150 synthetic labelled tickets (`data/eval_tickets.json`). See [`docs/evaluation.md`](./docs/evaluation.md) for full metric definitions and integrity rules.
+
+- **Integrity Rule:** `data/eval_tickets.json` is a fixed held-out test set. Prompts, categories, and priority rules are never tuned in response to eval results. Runs are cryptographically fingerprinted (SHA-256).
+- **Resumability and Pacing:** Evaluation executes ticket by ticket with configurable pacing and rate-limit backoff:
+  - `EVAL_PACING_SECONDS=2` (default: 2s delay between tickets)
+  - `EVAL_MAX_RATE_LIMIT_WAITS=3` (default: up to 3 retries on rate limits before pausing)
+  - `EVAL_MAX_WAIT_SECONDS=120` (default: maximum backoff sleep per rate-limit event)
+- **UI Workspace:** Access evaluation runs under **Prototypes > Agent evaluation** tab with live progress polling, headline KPI tiles (with Wilson 95% confidence intervals), confusion matrices, slice breakdowns, and failure inspection.
+
 ## Run Tests
 
 ### Backend (pytest + coverage gate >= 90%)
