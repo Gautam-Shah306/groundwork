@@ -31,9 +31,15 @@ router = APIRouter(prefix="/api/engagements/{engagement_id}/evaluation", tags=["
 class CreateEvalRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sample_size: int = Field(default=150, ge=1, le=150)
+    sample_size: int = Field(default=150, ge=10, le=150)
     model: str | None = None
-    drafts_sample: int = Field(default=0, ge=0, le=150)
+    drafts_sample: int = Field(default=0, ge=0, le=30)
+
+
+class CreateEvalRunResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: int
 
 
 class EvalRunResponse(BaseModel):
@@ -169,7 +175,7 @@ def _start_runner_thread(
     thread.start()
 
 
-@router.post("/runs", response_model=EvalRunResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/runs", response_model=CreateEvalRunResponse, status_code=status.HTTP_202_ACCEPTED)
 def create_eval_run(
     engagement_id: int,
     payload: CreateEvalRunRequest,
@@ -242,7 +248,7 @@ def create_eval_run(
     db.commit()
 
     _start_runner_thread(request, eval_run.id, settings)
-    return EvalRunResponse.from_orm_model(eval_run)
+    return CreateEvalRunResponse(run_id=eval_run.id)
 
 
 @router.get("/runs", response_model=list[EvalRunResponse])

@@ -1348,8 +1348,10 @@ export interface EvalResults {
     category_accuracy_wilson: [number, number];
     lenient_category_accuracy: number;
     priority_accuracy: number;
+    priority_accuracy_completed?: number;
     queue_accuracy: number;
     reviewer_change_proxy: number;
+    missed_high_count?: number;
     category_accuracy_pct: number;
     priority_accuracy_pct: number;
     queue_accuracy_pct: number;
@@ -1369,9 +1371,14 @@ export interface EvalResults {
   category_confusion_matrix: Record<string, Record<string, number>>;
   priority_metrics: {
     priority_accuracy: number;
+    priority_accuracy_completed?: number;
+    strict_accuracy?: number;
+    completed_accuracy?: number;
     confusion_matrix: Record<string, Record<string, number>>;
     under_prioritised: number;
+    under_prioritised_share?: number;
     over_prioritised: number;
+    over_prioritised_share?: number;
     missed_high: { count: number; rate: number };
     truth_high_no_prediction: { count: number; rate: number };
     priority_errors_by_cause: {
@@ -1399,20 +1406,41 @@ export interface EvalResults {
   failure_cases: Array<{
     ticket_id: string;
     subject?: string | null;
-    body_snippet: string;
+    body?: string;
+    body_snippet?: string;
+    language?: string;
     true_category: string;
     predicted_category?: string | null;
     true_priority: string;
     predicted_priority?: string | null;
     true_signals: string[];
     predicted_signals: string[];
+    flags?: any[];
     reason: string;
   }>;
   draft_checks?: {
-    count: number;
-    total_flags: number;
-    flag_counts_by_code: Record<string, number>;
-    unflagged_rate: number;
+    n?: number;
+    count?: number;
+    total_flags?: number;
+    tickets_with_flags?: number;
+    flag_rate?: number;
+    flag_counts_by_code?: Record<string, number>;
+    counts_by_flag_code?: Record<string, number>;
+    unflagged_rate?: number;
+    draft_unavailable_count?: number;
+    note?: string;
+  } | null;
+  draft_check?: {
+    n?: number;
+    count?: number;
+    total_flags?: number;
+    tickets_with_flags?: number;
+    flag_rate?: number;
+    counts_by_flag_code?: Record<string, number>;
+    flag_counts_by_code?: Record<string, number>;
+    unflagged_rate?: number;
+    draft_unavailable_count?: number;
+    note?: string;
   } | null;
 }
 
@@ -1492,10 +1520,14 @@ export async function fetchEvalRun(
   return (await response.json()) as EvalRunSummary;
 }
 
+export interface CreateEvalRunResponse {
+  run_id: number;
+}
+
 export async function createEvalRun(
   engagementId: number,
   payload: CreateEvalRunPayload
-): Promise<EvalRunSummary> {
+): Promise<CreateEvalRunResponse> {
   const response = await fetch(
     buildApiUrl(`/api/engagements/${engagementId}/evaluation/runs`),
     {
@@ -1510,7 +1542,7 @@ export async function createEvalRun(
   if (!response.ok) {
     throw await extractStructuredApiError(response, "Unable to start evaluation run");
   }
-  return (await response.json()) as EvalRunSummary;
+  return (await response.json()) as CreateEvalRunResponse;
 }
 
 export async function fetchEvalRunItems(

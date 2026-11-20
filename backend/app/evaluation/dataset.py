@@ -22,7 +22,7 @@ VALID_LANGUAGES = {"en", "hinglish"}
 
 
 class EvalTicket(BaseModel):
-    """A labelled ticket in the evaluation test set."""
+    """A labelled ticket in the evaluation test set with code-derived properties (A2)."""
 
     id: str
     subject: str | None = None
@@ -34,6 +34,9 @@ class EvalTicket(BaseModel):
     true_priority: str
     is_ambiguous: bool
     secondary_category: str | None = None
+    true_queue: str = ""
+    is_hinglish: bool = False
+    is_short: bool = False
 
 
 def compute_dataset_fingerprint(path: str | Path = "data/eval_tickets.json") -> str:
@@ -117,6 +120,11 @@ def load_eval_tickets(
     - true_priority matches deterministic evaluate_priority(true_signals).priority
     - is_ambiguous consistency with secondary_category
     - uniqueness of ticket IDs
+
+    Derives in code (A2):
+    - is_hinglish from language == "hinglish"
+    - is_short from fewer than 12 words in body
+    - true_queue from deterministic route_to_queue / evaluate_priority
     """
     p = Path(path)
     if not p.exists():
@@ -188,10 +196,17 @@ def load_eval_tickets(
             if secondary is not None:
                 raise ValueError(f"Ticket {tid}: non-ambiguous ticket must have secondary_category=None.")
 
+        # Derived fields in code (A2)
+        body_text = item.get("body", "")
+        is_hinglish = (language == "hinglish")
+        is_short = len(body_text.split()) < 12
+        base_queue = triage_config.category_to_queue.get(true_cat, "General")
+        true_queue = expected_priority.queue_override if expected_priority.queue_override else base_queue
+
         ticket = EvalTicket(
             id=tid,
             subject=item.get("subject"),
-            body=item.get("body", ""),
+            body=body_text,
             channel=channel,
             language=language,
             true_category=true_cat,
@@ -199,6 +214,9 @@ def load_eval_tickets(
             true_priority=actual_priority,
             is_ambiguous=is_ambiguous,
             secondary_category=secondary,
+            true_queue=true_queue,
+            is_hinglish=is_hinglish,
+            is_short=is_short,
         )
         tickets.append(ticket)
 

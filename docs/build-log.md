@@ -458,3 +458,56 @@ docker compose exec -T frontend npm run build
 
 
 
+
+
+## Prompt 9b — Conformance Gaps, Real Provider Live Checks & Triage Benchmark Evaluation (2026-11-20)
+
+### What was built
+- **Part 0 (Prompt 9 Review Resolution & Verification):**
+  - **0.1 Invariants & Hygiene:** Verified clean working tree, tags `p01`–`p09`, `p06b`, `p08b` present, `.env` untracked, `local/` git-ignored, no `frontend/src/tests/` directory.
+  - **0.2 Integrity Verification:** Verified `git diff p08b --stat -- config/ data/` is completely empty. SHA256 of classification system prompt template is `a511efd519e512ae126a6aa99433d9e61dc74e62b964051a95d0368e59d72c14` (unchanged from `p08b`).
+  - **0.3 Test Accounting:** Verified all test files and counts between `p08b` and now. AppShell has 7 tests, DiagnosticsAnalysis has 17 tests. Zero tests removed or renamed.
+  - **0.4 Real Repository Facts:** Verified and printed actual runtime values from `config/queues.yaml` (7 categories, 5 queues), `config/priority_rules.yaml` (10 signals, 10 rules), allowed placeholders (6), flag codes (17), and provider method (`generate`).
+- **Part A (Conformance Gaps Closed):**
+  - **A1 (Metrics Definitions):** Conformed `backend/app/evaluation/metrics.py`: `reviewer_change_proxy` is share where category, priority, or queue is incorrect, or prediction missing (signals excluded); predicted priority evaluated via `evaluate_priority` on post-processed predicted signals; under/over-prioritisation and missed-high reported with truth-high unpredicted separated; failure case severity ordering (`category_and_priority_error`, `missed_high_priority`, `priority_underestimated`, `wrong_queue_only`, `false_positive_signal_only`, `missing_signal_only`); Wilson interval returns `None` for zero/negative sample sizes. Updated `docs/evaluation.md` and UI components.
+  - **A2 (Dataset Schema):** Conformed `backend/app/evaluation/dataset.py` so `EvalTicket` accepts the real `data/eval_tickets.json` schema (`true_secondary_categories`, `key_signals`, `turnaround_time_hours`, `ticket_channel`) and derives `true_queue`, `is_hinglish`, and `is_short` programmatically in code.
+  - **A3 (REST API Contract):** Updated `backend/app/api/evaluation.py` so `POST /runs` accepts `sample_size` (10–150) and `drafts_sample` (0–30), returns HTTP 202 with `{"run_id": id}`.
+  - **A4 (Settings Default):** Verified `eval_max_rate_limit_waits = 3` across `config.py`, `.env.example`, `docker-compose.yml`, and `README.md`.
+  - **A5 (Deterministic Stratified Draft Sample):** Runner executes Phase 1 classification on the full sample, then deterministically samples up to `drafts_sample` completed tickets stratified by category (seed 42) for Phase 2 drafting. Draft evaluation records only review flags, policy refs, and reviewer note; zero raw draft text or ticket text is stored.
+  - **A6 (UI Conformance):** Updated evaluation components in `frontend/src/components/evaluation/` (`RunControls`, `ResultsSummary`, `ConfusionMatrix`, `SlicesTable`, `FailureCasesList`, `ProgressCard`, `EvaluationTab`) to adhere to design tokens, `TypeLabel`, proper terminology (`Reviewer-Change Proxy`), and accessible structure.
+  - **A7 (Unit Tests):** Added and mapped all required critical-invariant tests across `test_evaluation_metrics.py`, `test_evaluation_dataset.py`, `test_evaluation_runner.py`, and `test_evaluation_api.py`.
+  - **A8 (Discovery Quote Analysis):** Verified intake transcript quotes in Discovery analysis, identifying clause truncation and mild paraphrase without metric fabrications.
+- **Part C (Live Verification against Real Provider `openai/gpt-oss-20b` via Frontend Proxy):**
+  - **C1 (Vocabulary & Rule Guard):** Created `local/validate_vocab.py` and validated negative/positive cases catching hallucinated queues, signals, categories, and invalid rule IDs.
+  - **C2 (Live Triage Tickets):** Executed 3 live tickets on a throwaway engagement; 0 vocabulary/rule violations found; deleted throwaway engagement (HTTP 204).
+  - **C3 (Assistant Live Run):** Executed live question 'Why are customers waiting so long?' on Engagement 1; verified tool invocation `get_findings` (`c1`) and grounded answer blocks referencing cited evidence.
+  - **C4 (Smoke Evaluation Run):** Executed live run `run_id: 1` (`sample_size=20, drafts_sample=0`) in 80s via frontend proxy. Verified results via `local/recompute_eval.py`.
+  - **C5 (Full Benchmark Evaluation Run):** Executed live run `run_id: 2` (`sample_size=150, drafts_sample=21`) in 14m via frontend proxy. Verified complete 150-ticket test set results via `local/recompute_eval.py`.
+  - **C6 (UI Headline Fields):** Verified all required KPI tiles and summary metrics exist, match deterministic scoring, and contain non-null values.
+- **Integrity Rule & Secret Hygiene:**
+  - `data/eval_tickets.json`, `config/queues.yaml`, and `config/priority_rules.yaml` remained 100% untouched.
+  - Zero API key leaks found across git tracked files, git diff, local evidence, docker logs, and database tables.
+  - Zero ticket body or draft text stored in `eval_items` or `audit_logs`.
+
+### Test Results & Verification
+- **Backend:** 401 passed, 1 warning in 186.20s; test coverage 91.79% (gate >= 90%).
+- **Frontend:** 159 passed across 9 test files in 23.02s; `npm run typecheck` 0 errors; `npm run build` completed cleanly.
+
+### How to run it
+```powershell
+# Run backend test suite with coverage natively
+backend\.venv\Scripts\python.exe -m pytest backend/tests/ --cov=backend/app --cov-report=term-missing
+
+# Run frontend tests, typecheck, and build in Docker
+docker compose exec -T frontend npm run test -- --run
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+
+# Verify evidence files and recompute benchmark metrics deterministically
+backend\.venv\Scripts\python.exe local\recompute_eval.py
+```
+
+### What was not done
+- Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).

@@ -1,4 +1,4 @@
-import { Card, Eyebrow, StatusPill } from "../ui";
+import { Card, Eyebrow } from "../ui";
 import type { EvalResults } from "../../lib/api";
 
 export interface SlicesTableProps {
@@ -19,7 +19,7 @@ const SLICE_DISPLAY_NAMES: Record<string, { label: string; desc: string }> = {
     desc: "Tickets straddling two distinct category definitions",
   },
   short: {
-    label: "Short tickets (<100 chars)",
+    label: "Short tickets (<12 words)",
     desc: "Concise inquiries with minimal contextual cues",
   },
   urgency_or_delay: {
@@ -39,12 +39,15 @@ export function SlicesTable({ slices }: SlicesTableProps) {
           Performance by Subgroup Slice
         </h3>
         <p className="text-[12px] text-muted">
-          Accuracy evaluated across linguistic, ambiguous, and length-based slices. Slices with n &lt; 30 are flagged as low confidence.
+          Accuracy evaluated across linguistic, ambiguous, and length-based slices. Slices with n &lt; 30 are marked with a text note.
         </p>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[13px] border-collapse">
+        <table
+          className="w-full text-left text-[13px] border-collapse"
+          aria-label="Subgroup Slices Performance"
+        >
           <thead>
             <tr className="border-b border-border bg-surface-subtle text-muted text-[11px] uppercase font-semibold">
               <th className="p-2.5">Slice</th>
@@ -52,7 +55,7 @@ export function SlicesTable({ slices }: SlicesTableProps) {
               <th className="p-2.5 text-right">Sample (n)</th>
               <th className="p-2.5 text-right">Category Acc.</th>
               <th className="p-2.5 text-right">Priority Acc.</th>
-              <th className="p-2.5 text-center">Confidence</th>
+              <th className="p-2.5 text-center">Confidence Note</th>
             </tr>
           </thead>
           <tbody>
@@ -75,11 +78,15 @@ export function SlicesTable({ slices }: SlicesTableProps) {
                   <td className="p-2.5 text-right font-mono tabular-nums text-ink font-semibold">
                     {priPct}%
                   </td>
-                  <td className="p-2.5 text-center">
-                    {slice.low_confidence ? (
-                      <StatusPill variant="warning" label="Low n (<30)" />
+                  <td className="p-2.5 text-center text-[12px]">
+                    {slice.low_confidence || slice.count < 30 ? (
+                      <span className="text-warning font-medium">
+                        Low confidence (n below 30)
+                      </span>
                     ) : (
-                      <StatusPill variant="neutral" label="Sufficient" />
+                      <span className="text-muted">
+                        Adequate power
+                      </span>
                     )}
                   </td>
                 </tr>

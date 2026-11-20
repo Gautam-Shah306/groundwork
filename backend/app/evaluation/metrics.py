@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.evaluation.dataset import EvalTicket
 from app.triage.config import TriageConfig, load_triage_config
-from app.triage.priority import PriorityLevel, evaluate_priority
+from app.triage.priority import evaluate_priority
 
 
 class EvalItemRecord(BaseModel):
@@ -32,14 +32,16 @@ class EvalItemRecord(BaseModel):
     draft: dict[str, Any] | None = None
 
 
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
     """Compute the Wilson score interval for a binomial proportion.
 
     Formula:
         (p + z^2 / (2n) +- z * sqrt(p(1-p)/n + z^2 / (4n^2))) / (1 + z^2 / n)
-    Clamped to [0.0, 1.0]. When n == 0, returns (0.0, 0.0).
+    Clamped to [0.0, 1.0]. When n <= 0, returns None.
     """
-    if n <= 0 or k < 0:
+    if n <= 0:
+        return None
+    if k < 0:
         return (0.0, 0.0)
 
     p = k / n
@@ -80,7 +82,6 @@ def compute_evaluation_metrics(
     items_by_id: dict[str, EvalItemRecord] = {}
     for item in items:
         if isinstance(item, dict):
-            # Normalize predicted_signals if list of dicts
             rec_dict = dict(item)
             if "predicted_signals" in rec_dict:
                 rec_dict["predicted_signals"] = _extract_signal_names(rec_dict["predicted_signals"])
@@ -94,11 +95,10 @@ def compute_evaluation_metrics(
         items_by_id[rec.ticket_id] = rec
 
     # Pre-calculate expected queues and ground truth decisions for tickets
-    cat_queue_map = {c.id: c.queue for c in triage_config.categories}
     expected_data_by_id: dict[str, dict[str, Any]] = {}
     for t in tickets:
         decision = evaluate_priority(t.true_signals, config=triage_config)
-        base_queue = cat_queue_map.get(t.true_category, "General")
+        base_queue = triage_config.category_to_queue.get(t.true_category, "General")
         expected_queue = decision.queue_override if decision.queue_override else base_queue
         expected_escalation = bool(decision.queue_override or decision.priority == "high")
         expected_data_by_id[t.id] = {
@@ -138,6 +138,7 @@ def compute_evaluation_metrics(
     under_prioritised_count = 0
     over_prioritised_count = 0
     missed_high_count = 0
+    completed_truth_high_count = 0
     truth_high_count = 0
     truth_high_no_pred_count = 0
 
@@ -174,9 +175,10 @@ def compute_evaluation_metrics(
         true_p = t.true_priority
         if true_p == "high":
             truth_high_count += 1
+            if is_success:
+                completed_truth_high_count += 1
 
         expected_q = expected_data_by_id[t.id]["queue"]
-        expected_esc = expected_data_by_id[t.id]["escalation"]
 
         # 1. Category evaluation
         pred_cat = item.predicted_category if (is_success and item) else None
@@ -201,31 +203,35 @@ def compute_evaluation_metrics(
             lenient_category_count += 1
 
         # 2. Priority evaluation
-        pred_p = item.predicted_priority if (is_success and item) else None
-        if pred_p in priority_levels:
-            pri_matrix[true_p][pred_p] += 1
-        else:
-            pri_matrix[true_p]["no_prediction"] += 1
-            if true_p == "high":
-                truth_high_no_pred_count += 1
-
+        # Priority rule: predicted priority is evaluate_priority on predicted (post-processed) signals
         is_pri_correct = False
-        if is_success and item and item.predicted_priority:
-            if item.predicted_priority == true_p:
+        if is_success and item:
+            clean_pred_signals = [s for s in item.predicted_signals if s in triage_config.signals]
+            pred_decision = evaluate_priority(clean_pred_signals, config=triage_config)
+            pred_p = pred_decision.priority.value if hasattr(pred_decision.priority, "value") else str(pred_decision.priority)
+            if pred_p in priority_levels:
+                pri_matrix[true_p][pred_p] += 1
+            else:
+                pri_matrix[true_p]["no_prediction"] += 1
+
+            if pred_p == true_p:
                 correct_priority_count += 1
                 is_pri_correct = True
             else:
-                pred_num = pri_level_num.get(item.predicted_priority, 0)
+                pred_num = pri_level_num.get(pred_p, 0)
                 true_num = pri_level_num.get(true_p, 0)
                 if true_num > pred_num:
                     under_prioritised_count += 1
                 elif true_num < pred_num:
                     over_prioritised_count += 1
 
-                if true_p == "high" and item.predicted_priority != "high":
+                if true_p == "high" and pred_p != "high":
                     missed_high_count += 1
-        elif true_p == "high":
-            missed_high_count += 1
+        else:
+            pred_p = None
+            pri_matrix[true_p]["no_prediction"] += 1
+            if true_p == "high":
+                truth_high_no_pred_count += 1
 
         # Priority error causes
         if not is_pri_correct:
@@ -246,20 +252,19 @@ def compute_evaluation_metrics(
                     elif spurious:
                         priority_errors_by_cause["signals_spurious"] += 1
 
-        # 3. Queue & Escalation evaluation
+        # 3. Queue evaluation
         is_queue_correct = False
         if is_success and item and item.predicted_queue == expected_q:
             correct_queue_count += 1
             is_queue_correct = True
 
-        item_esc = item.escalation if (is_success and item) else False
-        is_esc_correct = item_esc == expected_esc
-
-        # Reviewer change proxy: if human has to intervene on category, priority, or escalation
-        if not (is_cat_correct and is_pri_correct and is_esc_correct):
+        # 4. Reviewer change proxy (R1/A1):
+        # Share of evaluated tickets where category OR priority OR queue is wrong, or there is no prediction.
+        # (Signals are NOT part of it; labelled a proxy, not an override rate.)
+        if (not is_success) or (not is_cat_correct) or (not is_pri_correct) or (not is_queue_correct):
             reviewer_intervention_count += 1
 
-        # 4. Signals evaluation
+        # 5. Signals evaluation
         true_sig_set = set(t.true_signals)
         pred_sig_set = set(item.predicted_signals) if (is_success and item) else set()
 
@@ -283,7 +288,8 @@ def compute_evaluation_metrics(
             exact_signal_matches += 1
 
     # Wilson interval for category accuracy
-    cat_wilson_low, cat_wilson_high = wilson(correct_category_count, total_tickets)
+    cat_wilson = wilson(correct_category_count, total_tickets)
+    cat_wilson_list = list(cat_wilson) if cat_wilson is not None else [0.0, 0.0]
 
     # Per-category P, R, F1
     per_category: dict[str, dict[str, Any]] = {}
@@ -333,12 +339,13 @@ def compute_evaluation_metrics(
             "f1": f1,
         }
 
-    # Slices
+    # Slices (A2/B4):
+    # language en, hinglish; is_ambiguous; short (<12 words); urgency_or_delay
     slice_defs = {
         "en": lambda t: t.language == "en",
-        "hinglish": lambda t: t.language == "hinglish",
+        "hinglish": lambda t: t.language == "hinglish" or getattr(t, "is_hinglish", False),
         "is_ambiguous": lambda t: bool(t.is_ambiguous),
-        "short": lambda t: len(t.body) < 100,
+        "short": lambda t: getattr(t, "is_short", len(t.body.split()) < 12),
         "urgency_or_delay": lambda t: (
             "explicit_urgency" in t.true_signals or "delivery_delayed_over_3_days" in t.true_signals
         ),
@@ -355,7 +362,11 @@ def compute_evaluation_metrics(
             if item and item.status == "success":
                 if item.predicted_category == t.true_category:
                     correct_c += 1
-                if item.predicted_priority == t.true_priority:
+                # Check priority
+                clean_sigs = [s for s in item.predicted_signals if s in triage_config.signals]
+                dec = evaluate_priority(clean_sigs, config=triage_config)
+                p_val = dec.priority.value if hasattr(dec.priority, "value") else str(dec.priority)
+                if p_val == t.true_priority:
                     correct_p += 1
         slices.append({
             "name": slice_name,
@@ -365,12 +376,13 @@ def compute_evaluation_metrics(
             "low_confidence": cnt < 30,
         })
 
-    # Failure case selection (at most 5 items)
-    # Severity order:
-    # 1. Missed high priority (true high, predicted medium/low)
-    # 2. Wrong category where priority also wrong
-    # 3. Wrong priority (category correct)
-    # 4. Failed item (no prediction)
+    # Failure case selection (at most 5 items) - A1:
+    # Order:
+    # 1. true high predicted lower (medium/low)
+    # 2. wrong category
+    # 3. wrong priority
+    # 4. no prediction (failed items)
+    # Ties by ticket_id ascending; at most 5; reason sentence generated by code.
     bucket_1: list[dict[str, Any]] = []
     bucket_2: list[dict[str, Any]] = []
     bucket_3: list[dict[str, Any]] = []
@@ -382,61 +394,53 @@ def compute_evaluation_metrics(
             bucket_4.append({
                 "ticket_id": t.id,
                 "subject": t.subject,
+                "body": t.body,
                 "body_snippet": t.body[:100],
+                "language": t.language,
                 "true_category": t.true_category,
                 "predicted_category": None,
                 "true_priority": t.true_priority,
                 "predicted_priority": None,
                 "true_signals": t.true_signals,
                 "predicted_signals": [],
-                "reason": f"Model failed to return prediction ({item.error_code if item else 'missing_item'}).",
+                "flags": item.flags if item else [],
+                "reason": f"Classification failed ({item.error_code if item else 'missing_item'}).",
             })
             continue
 
-        cat_wrong = item.predicted_category != t.true_category
-        pri_wrong = item.predicted_priority != t.true_priority
-        true_is_high = t.true_priority == "high"
-        pred_is_not_high = item.predicted_priority != "high"
+        clean_sigs = [s for s in item.predicted_signals if s in triage_config.signals]
+        dec = evaluate_priority(clean_sigs, config=triage_config)
+        pred_p = dec.priority.value if hasattr(dec.priority, "value") else str(dec.priority)
 
-        if true_is_high and pred_is_not_high:
-            bucket_1.append({
-                "ticket_id": t.id,
-                "subject": t.subject,
-                "body_snippet": t.body[:100],
-                "true_category": t.true_category,
-                "predicted_category": item.predicted_category,
-                "true_priority": t.true_priority,
-                "predicted_priority": item.predicted_priority,
-                "true_signals": t.true_signals,
-                "predicted_signals": item.predicted_signals,
-                "reason": f"High priority ticket under-prioritised to {item.predicted_priority}.",
-            })
-        elif cat_wrong and pri_wrong:
-            bucket_2.append({
-                "ticket_id": t.id,
-                "subject": t.subject,
-                "body_snippet": t.body[:100],
-                "true_category": t.true_category,
-                "predicted_category": item.predicted_category,
-                "true_priority": t.true_priority,
-                "predicted_priority": item.predicted_priority,
-                "true_signals": t.true_signals,
-                "predicted_signals": item.predicted_signals,
-                "reason": f"Mismatched category ({item.predicted_category} vs {t.true_category}) and priority.",
-            })
+        cat_wrong = item.predicted_category != t.true_category
+        pri_wrong = pred_p != t.true_priority
+        true_is_high = t.true_priority == "high"
+        pred_is_lower = pred_p in ("medium", "low")
+
+        case_dict = {
+            "ticket_id": t.id,
+            "subject": t.subject,
+            "body": t.body,
+            "body_snippet": t.body[:100],
+            "language": t.language,
+            "true_category": t.true_category,
+            "predicted_category": item.predicted_category,
+            "true_priority": t.true_priority,
+            "predicted_priority": pred_p,
+            "true_signals": t.true_signals,
+            "predicted_signals": item.predicted_signals,
+            "flags": item.flags or [],
+        }
+
+        if true_is_high and pred_is_lower:
+            case_dict["reason"] = f"High priority ticket under-prioritised to {pred_p}."
+            bucket_1.append(case_dict)
+        elif cat_wrong:
+            case_dict["reason"] = f"Category misclassified as {item.predicted_category} (expected {t.true_category})."
+            bucket_2.append(case_dict)
         elif pri_wrong:
-            bucket_3.append({
-                "ticket_id": t.id,
-                "subject": t.subject,
-                "body_snippet": t.body[:100],
-                "true_category": t.true_category,
-                "predicted_category": item.predicted_category,
-                "true_priority": t.true_priority,
-                "predicted_priority": item.predicted_priority,
-                "true_signals": t.true_signals,
-                "predicted_signals": item.predicted_signals,
-                "reason": f"Priority mismatched ({item.predicted_priority} vs {t.true_priority}).",
-            })
+            case_dict["reason"] = f"Priority misclassified as {pred_p} (expected {t.true_priority})."
+            bucket_3.append(case_dict)
 
     # Sort each bucket by ticket_id ascending
     for b in [bucket_1, bucket_2, bucket_3, bucket_4]:
@@ -452,30 +456,45 @@ def compute_evaluation_metrics(
         if len(failure_cases) >= 5:
             break
 
-    # Draft flag checks (optional)
+    # Draft flag checks (A5)
     draft_metrics: dict[str, Any] | None = None
-    if draft_flags_checked > 0:
-        evaluated_drafts = [it for it in items_by_id.values() if it.draft is not None]
+    evaluated_drafts = [it for it in items_by_id.values() if it.draft is not None]
+    if evaluated_drafts or draft_flags_checked > 0:
         d_count = len(evaluated_drafts)
         total_flags = 0
         flag_codes: dict[str, int] = {}
-        unflagged_count = 0
+        tickets_with_flags = 0
+        draft_unavailable_count = 0
 
         for it in evaluated_drafts:
-            flags = (it.draft.get("flags") or []) if it.draft else []
-            total_flags += len(flags)
-            if not flags:
-                unflagged_count += 1
+            d_dict = it.draft or {}
+            flags = d_dict.get("flags") or []
+            if d_dict.get("draft_unavailable", False) or d_dict.get("error_code"):
+                draft_unavailable_count += 1
+            if flags:
+                tickets_with_flags += 1
+                total_flags += len(flags)
             for f in flags:
                 code = f.get("code", "unknown") if isinstance(f, dict) else str(f)
                 flag_codes[code] = flag_codes.get(code, 0) + 1
+                if code == "draft_unavailable":
+                    draft_unavailable_count += 1
 
+        unflagged_count = d_count - tickets_with_flags
         unflagged_rate = round(unflagged_count / d_count, 4) if d_count > 0 else 0.0
+        flag_rate = round(tickets_with_flags / d_count, 4) if d_count > 0 else 0.0
+
         draft_metrics = {
+            "n": d_count,
             "count": d_count,
+            "tickets_with_flags": tickets_with_flags,
+            "flag_rate": flag_rate,
             "total_flags": total_flags,
+            "counts_by_flag_code": flag_codes,
             "flag_counts_by_code": flag_codes,
+            "draft_unavailable_count": draft_unavailable_count,
             "unflagged_rate": unflagged_rate,
+            "note": "Automated checks only: this does not measure reply quality.",
         }
 
     # Summary dictionary
@@ -483,6 +502,7 @@ def compute_evaluation_metrics(
     cat_acc_completed = round(correct_category_count / completed_count, 4) if completed_count > 0 else 0.0
     lenient_cat_acc = round(lenient_category_count / total_tickets, 4) if total_tickets > 0 else 0.0
     pri_acc = round(correct_priority_count / total_tickets, 4) if total_tickets > 0 else 0.0
+    pri_acc_completed = round(correct_priority_count / completed_count, 4) if completed_count > 0 else 0.0
     queue_acc = round(correct_queue_count / total_tickets, 4) if total_tickets > 0 else 0.0
     reviewer_proxy = round(reviewer_intervention_count / total_tickets, 4) if total_tickets > 0 else 0.0
 
@@ -492,11 +512,13 @@ def compute_evaluation_metrics(
         "failed": failed_count,
         "category_accuracy": cat_acc,
         "category_accuracy_completed": cat_acc_completed,
-        "category_accuracy_wilson": list(cat_wilson_low_high := (cat_wilson_low, cat_wilson_high)),
+        "category_accuracy_wilson": cat_wilson_list,
         "lenient_category_accuracy": lenient_cat_acc,
         "priority_accuracy": pri_acc,
+        "priority_accuracy_completed": pri_acc_completed,
         "queue_accuracy": queue_acc,
         "reviewer_change_proxy": reviewer_proxy,
+        "missed_high_count": missed_high_count,
         # Percentage representations (1 decimal place)
         "category_accuracy_pct": round(cat_acc * 100, 1),
         "priority_accuracy_pct": round(pri_acc * 100, 1),
@@ -504,18 +526,28 @@ def compute_evaluation_metrics(
         "reviewer_change_proxy_pct": round(reviewer_proxy * 100, 1),
     }
 
+    under_prioritised_share = round(under_prioritised_count / completed_count, 4) if completed_count > 0 else 0.0
+    over_prioritised_share = round(over_prioritised_count / completed_count, 4) if completed_count > 0 else 0.0
+    missed_high_rate = round(missed_high_count / completed_truth_high_count, 4) if completed_truth_high_count > 0 else 0.0
+    truth_high_no_pred_rate = round(truth_high_no_pred_count / truth_high_count, 4) if truth_high_count > 0 else 0.0
+
     priority_metrics = {
         "priority_accuracy": pri_acc,
+        "priority_accuracy_completed": pri_acc_completed,
+        "strict_accuracy": pri_acc,
+        "completed_accuracy": pri_acc_completed,
         "confusion_matrix": pri_matrix,
         "under_prioritised": under_prioritised_count,
+        "under_prioritised_share": under_prioritised_share,
         "over_prioritised": over_prioritised_count,
+        "over_prioritised_share": over_prioritised_share,
         "missed_high": {
             "count": missed_high_count,
-            "rate": round(missed_high_count / truth_high_count, 4) if truth_high_count > 0 else 0.0,
+            "rate": missed_high_rate,
         },
         "truth_high_no_prediction": {
             "count": truth_high_no_pred_count,
-            "rate": round(truth_high_no_pred_count / truth_high_count, 4) if truth_high_count > 0 else 0.0,
+            "rate": truth_high_no_pred_rate,
         },
         "priority_errors_by_cause": priority_errors_by_cause,
     }
@@ -538,4 +570,5 @@ def compute_evaluation_metrics(
         "slices": slices,
         "failure_cases": failure_cases,
         "draft_checks": draft_metrics,
+        "draft_check": draft_metrics,
     }

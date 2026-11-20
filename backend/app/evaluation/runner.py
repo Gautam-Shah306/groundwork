@@ -1,6 +1,7 @@
-"""Background execution runner for evaluation benchmark runs (B5).
+"""Background runner for Evaluation Benchmark runs (B5).
 
-Handles pacing, rate-limit backoff, terminal error pauses, checkpointing, and resumption.
+Orchestrates sequential ticket processing with pacing, rate-limit backoff,
+stop/resume events, item persistence, and comprehensive scoring.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -18,7 +19,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import Settings
 from app.evaluation.dataset import EvalTicket, load_eval_tickets, select_sample
 from app.evaluation.metrics import compute_evaluation_metrics
-from app.llm import get_provider
 from app.llm.base import LLMProvider
 from app.llm.errors import (
     LLMAuthError,
@@ -28,6 +28,7 @@ from app.llm.errors import (
     LLMRateLimited,
     scrub_secrets,
 )
+from app.llm.factory import get_provider
 from app.models import EvalItem, EvalRun, EvalRunStatus, utc_now
 from app.triage.config import TriageConfig, load_triage_config
 from app.triage.prompts import load_policies_text
@@ -48,65 +49,59 @@ def get_stop_event(run_id: int) -> threading.Event:
         return _RUN_STOP_EVENTS[run_id]
 
 
-def reset_stop_event(run_id: int) -> threading.Event:
-    with _RUN_STOP_LOCK:
-        ev = threading.Event()
-        _RUN_STOP_EVENTS[run_id] = ev
-        return ev
-
-
 def clear_stop_event(run_id: int) -> None:
     with _RUN_STOP_LOCK:
         _RUN_STOP_EVENTS.pop(run_id, None)
 
 
 def mark_interrupted_eval_runs_paused(session: Session) -> int:
-    """Startup hook: mark any running EvalRun as paused with interrupted status."""
-    stale_runs = session.scalars(
+    """Mark all EvalRun rows with status=running as paused (code=interrupted) on startup."""
+    running_runs = session.scalars(
         select(EvalRun).where(EvalRun.status == EvalRunStatus.running)
     ).all()
     count = 0
-    for r in stale_runs:
+    for r in running_runs:
         r.status = EvalRunStatus.paused
         r.error = {
             "code": "interrupted",
-            "message": "Run interrupted by server restart. Can be resumed.",
+            "message": "Evaluation run was interrupted by server restart.",
         }
         count += 1
-    if count > 0:
+    if count:
         session.commit()
+        logger.info("Marked %s interrupted evaluation runs as paused.", count)
     return count
 
 
 class EvaluationRunner:
-    """Runs an evaluation benchmark in a background thread."""
+    """Orchestrates an evaluation run over a sample of eval tickets."""
 
     def __init__(
         self,
-        session_factory: sessionmaker[Session],
+        *,
+        session_factory: sessionmaker,
         run_id: int,
         settings: Settings,
-        *,
-        provider: LLMProvider | None = None,
-        config: TriageConfig | None = None,
         eval_tickets_path: str = "data/eval_tickets.json",
+        config: TriageConfig | None = None,
+        provider: LLMProvider | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
     ) -> None:
         self.session_factory = session_factory
         self.run_id = run_id
         self.settings = settings
-        self._provider = provider
-        self.config = config
         self.eval_tickets_path = eval_tickets_path
+        self.config = config
+        self._provider = provider
         self.sleep = sleep_fn
-        self.stop_event = reset_stop_event(run_id)
+        self.stop_event = get_stop_event(run_id)
 
     def run(self) -> None:
-        """Execute the evaluation run."""
+        """Entry point for execution thread."""
         try:
             self._execute()
         except Exception as exc:
-            logger.exception("Unexpected error in EvaluationRunner for run %s", self.run_id)
+            logger.exception("EvaluationRunner unhandled exception in run %s: %s", self.run_id, exc)
             with self.session_factory() as session:
                 run_obj = session.get(EvalRun, self.run_id)
                 if run_obj and run_obj.status == EvalRunStatus.running:
@@ -163,14 +158,9 @@ class EvaluationRunner:
         max_rate_limit_waits = getattr(self.settings, "eval_max_rate_limit_waits", 3)
         max_wait_seconds = getattr(self.settings, "eval_max_wait_seconds", 120)
 
-        # Pre-load policy text if drafting is enabled
-        policy_text = ""
-        if drafts_sample > 0:
-            policy_text = load_policies_text()
-
         first_in_session = True
 
-        # 5. Process each ticket
+        # Phase 1: Classification phase
         for ticket in tickets_to_run:
             # Check for cancellation
             if self.stop_event.is_set():
@@ -231,7 +221,7 @@ class EvaluationRunner:
                     backoff_delay = min(backoff_delay * 2, max_wait_seconds)
 
                 except (LLMQuotaExhausted, LLMAuthError, LLMModelNotFound) as term_exc:
-                    # Terminal error: pause run gracefully
+                    # Terminal error: pause run gracefully without recording failure on current ticket
                     scrubbed = scrub_secrets(str(term_exc), secrets=(self.settings.llm_api_key,))
                     logger.error("Terminal LLM error during eval run %s: %s", self.run_id, scrubbed)
                     with self.session_factory() as session:
@@ -247,51 +237,7 @@ class EvaluationRunner:
                     item_error_code = exc.__class__.__name__
                     break
 
-            # Check if optional draft check applies (first drafts_sample tickets in sample_tickets)
-            draft_data: dict[str, Any] | None = None
-            ticket_sample_index = next(
-                (i for i, st in enumerate(sample_tickets) if st.id == ticket.id),
-                999999,
-            )
-            if item_success and res_cp is not None and ticket_sample_index < drafts_sample:
-                try:
-                    res_d, draft_out, draft_flags, draft_usage = tool_draft_ticket_response(
-                        "d1",
-                        subject=ticket.subject,
-                        body=ticket.body,
-                        channel=ticket.channel,
-                        category=res_cp.category or "product_questions",
-                        priority=res_cp.priority or "low",
-                        policy_text=policy_text,
-                        provider=provider,
-                        max_output_tokens=self.settings.llm_triage_max_output_tokens,
-                        escalation=res_cp.escalation,
-                        rule_id=res_cp.rule_id,
-                    )
-                    if draft_out is not None:
-                        draft_data = {
-                            "reply": draft_out.reply_text,
-                            "flags": [f.model_dump(mode="json") for f in draft_flags],
-                            "reviewer_note": draft_out.reviewer_note,
-                            "policy_refs": draft_out.policy_refs,
-                        }
-                    else:
-                        draft_data = {
-                            "reply": "",
-                            "flags": [{"code": "draft_unavailable", "message": "Draft output unavailable."}],
-                            "reviewer_note": None,
-                            "policy_refs": [],
-                        }
-                except Exception as d_exc:
-                    logger.warning("Drafting failed on ticket %s: %s", ticket.id, d_exc)
-                    draft_data = {
-                        "reply": "",
-                        "flags": [{"code": "draft_unavailable", "message": str(d_exc)}],
-                        "reviewer_note": None,
-                        "policy_refs": [],
-                    }
-
-            # Persist item result
+            # Persist item result (classification only)
             with self.session_factory() as session:
                 existing_item = session.scalar(
                     select(EvalItem).where(
@@ -320,7 +266,7 @@ class EvaluationRunner:
                     existing_item.usage = res_cp.usage
                     existing_item.duration_ms = res_cp.duration_ms
                     existing_item.provider_calls = res_cp.provider_calls
-                    existing_item.draft = draft_data
+                    # draft will be evaluated in Phase 2 if sampled
                 else:
                     existing_item.status = "error"
                     existing_item.error_code = item_error_code or "item_failed"
@@ -340,13 +286,112 @@ class EvaluationRunner:
                 # Update run progress
                 run_obj = session.get(EvalRun, self.run_id)
                 if run_obj:
-                    # Count completed items
                     all_run_items = session.scalars(
                         select(EvalItem).where(EvalItem.run_id == self.run_id)
                     ).all()
                     run_obj.progress_done = len(all_run_items)
                     run_obj.progress_total = total_sample
                 session.commit()
+
+        # Check for cancellation before Phase 2
+        if self.stop_event.is_set():
+            with self.session_factory() as session:
+                run_obj = session.get(EvalRun, self.run_id)
+                if run_obj:
+                    run_obj.status = EvalRunStatus.cancelled
+                    session.commit()
+            return
+
+        # Phase 2: Draft phase (A5: runs AFTER classification phase over deterministic stratified sample of completed items)
+        if drafts_sample > 0:
+            policy_text = load_policies_text()
+            with self.session_factory() as session:
+                completed_items = session.scalars(
+                    select(EvalItem).where(
+                        EvalItem.run_id == self.run_id,
+                        EvalItem.status == "success",
+                    )
+                ).all()
+
+            completed_item_ids = {it.ticket_id for it in completed_items}
+            completed_sample_tickets = [t for t in sample_tickets if t.id in completed_item_ids]
+
+            # Select deterministic stratified sample of size min(drafts_sample, len(completed_sample_tickets))
+            k_drafts = min(drafts_sample, len(completed_sample_tickets))
+            draft_sample_tickets = select_sample(completed_sample_tickets, k_drafts)
+            draft_ticket_ids = {t.id for t in draft_sample_tickets}
+
+            for draft_ticket in draft_sample_tickets:
+                if self.stop_event.is_set():
+                    break
+
+                with self.session_factory() as session:
+                    it_obj = session.scalar(
+                        select(EvalItem).where(
+                            EvalItem.run_id == self.run_id,
+                            EvalItem.ticket_id == draft_ticket.id,
+                        )
+                    )
+                    if it_obj is None or it_obj.draft is not None:
+                        continue
+
+                    # Pacing wait
+                    if pacing_seconds > 0:
+                        self.sleep(float(pacing_seconds))
+
+                    draft_data: dict[str, Any] | None = None
+                    d_usage: dict[str, Any] = {}
+                    try:
+                        res_d, draft_out, draft_flags, draft_usage = tool_draft_ticket_response(
+                            "d1",
+                            subject=draft_ticket.subject,
+                            body=draft_ticket.body,
+                            channel=draft_ticket.channel,
+                            category=it_obj.predicted_category or "product_questions",
+                            priority=it_obj.predicted_priority or "low",
+                            policy_text=policy_text,
+                            provider=provider,
+                            max_output_tokens=self.settings.llm_triage_max_output_tokens,
+                            escalation=it_obj.escalation,
+                            rule_id=it_obj.rule_id,
+                        )
+                        d_usage = draft_usage or {}
+                        if draft_out is not None:
+                            # STORE FLAGS ONLY - NEVER the reply text! (A5 / R3 / Secret hygiene)
+                            draft_data = {
+                                "flags": [f.model_dump(mode="json") if hasattr(f, "model_dump") else f for f in draft_flags],
+                                "reply_chars": len(draft_out.reply_text) if draft_out.reply_text else 0,
+                                "policy_refs_valid": bool(draft_out.policy_refs),
+                                "draft_unavailable": False,
+                                "error_code": None,
+                            }
+                        else:
+                            draft_data = {
+                                "flags": [{"code": "draft_unavailable", "message": "Draft output unavailable."}],
+                                "reply_chars": 0,
+                                "policy_refs_valid": False,
+                                "draft_unavailable": True,
+                                "error_code": "draft_failed",
+                            }
+                    except Exception as d_exc:
+                        logger.warning("Drafting failed on ticket %s: %s", draft_ticket.id, d_exc)
+                        draft_data = {
+                            "flags": [{"code": "draft_error", "message": str(d_exc)}],
+                            "reply_chars": 0,
+                            "policy_refs_valid": False,
+                            "draft_unavailable": True,
+                            "error_code": d_exc.__class__.__name__,
+                        }
+
+                    it_obj.draft = draft_data
+                    it_obj.provider_calls += 1
+                    if d_usage and it_obj.usage:
+                        curr_u = dict(it_obj.usage)
+                        curr_u["prompt_tokens"] = (curr_u.get("prompt_tokens") or 0) + (d_usage.get("prompt_tokens") or 0)
+                        curr_u["completion_tokens"] = (curr_u.get("completion_tokens") or 0) + (d_usage.get("completion_tokens") or 0)
+                        curr_u["total_tokens"] = (curr_u.get("total_tokens") or 0) + (d_usage.get("total_tokens") or 0)
+                        it_obj.usage = curr_u
+                    session.commit()
 
         # 6. Post-processing: check if all items finished
         with self.session_factory() as session:

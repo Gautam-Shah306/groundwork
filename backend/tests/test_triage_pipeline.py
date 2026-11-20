@@ -1029,3 +1029,90 @@ def test_pipeline_passes_escalation_flag_and_rule_id_to_draft_step(db_session, m
     _, kwargs = mock_draft.call_args
     assert kwargs.get("escalation") is True
     assert kwargs.get("rule_id") == "R-LEGAL"
+
+
+# A7.14 test_triage_outputs_are_constrained_to_configured_vocabularies
+def test_triage_outputs_are_constrained_to_configured_vocabularies(db_session) -> None:
+    session, eng_id = db_session
+    from app.triage.service import TriageTicketInput, classify_and_prioritise
+    from app.triage.config import load_triage_config
+    from app.config import Settings
+
+    config = load_triage_config()
+    settings = Settings(_env_file=None)
+
+    # 1. Unknown category -> classification error (not accepted)
+    fake_provider_bad_cat = FakeProvider([
+        LLMResponse(
+            text=json.dumps({
+                "category": "completely_unknown_category_xyz",
+                "secondary_category": None,
+                "signals": [],
+                "rationale": "test",
+            }),
+            tool_calls=[],
+        )
+    ])
+    res_cat = classify_and_prioritise(
+        TriageTicketInput(subject="Help", body="Need help with order", channel="chat"),
+        provider=fake_provider_bad_cat,
+        settings=settings,
+        config=config,
+    )
+    assert res_cat.error is not None
+    assert res_cat.error.get("code") == "classification_failed"
+    assert "invalid category" in res_cat.error.get("message", "").lower()
+
+    # 2. Unknown signal -> unknown_signal_dropped flag added, signal filtered out
+    fake_provider_bad_sig = FakeProvider([
+        LLMResponse(
+            text=json.dumps({
+                "category": "order_tracking",
+                "secondary_category": None,
+                "signals": [{"signal": "unknown_fantasy_signal", "source_quote": "order"}],
+                "rationale": "test",
+            }),
+            tool_calls=[],
+        )
+    ])
+    res_sig = classify_and_prioritise(
+        TriageTicketInput(subject="Help", body="Where is my order?", channel="chat"),
+        provider=fake_provider_bad_sig,
+        settings=settings,
+        config=config,
+    )
+    assert res_sig.error is None
+    flag_codes = [f.get("code") if isinstance(f, dict) else getattr(f, "code", "") for f in res_sig.flags]
+    assert "unknown_signal_dropped" in flag_codes
+    assert not any(s.get("signal") == "unknown_fantasy_signal" for s in res_sig.signals)
+
+    # 3. Unknown placeholder in draft -> flagged unknown_placeholder
+    fake_provider_bad_draft = FakeProvider([
+        LLMResponse(
+            text=json.dumps({
+                "category": "order_tracking",
+                "secondary_category": None,
+                "signals": [],
+                "rationale": "test",
+            }),
+            tool_calls=[],
+        ),
+        LLMResponse(
+            text=json.dumps({
+                "reply_text": "Hello [CUSTOMER_NAME], your status is [INVALID_PLACEHOLDER].",
+                "policy_refs": ["2. Delivery and fulfillment delays"],
+                "reviewer_note": "Draft ready",
+            }),
+            tool_calls=[],
+        ),
+    ])
+    prop, _ = run_triage_pipeline(
+        db=session,
+        engagement_id=eng_id,
+        subject="Status update",
+        body="Where is my shipment?",
+        channel="chat",
+        provider=fake_provider_bad_draft,
+    )
+    draft_flag_codes = [f.get("code") for f in (prop.flags or [])]
+    assert "unknown_placeholder" in draft_flag_codes

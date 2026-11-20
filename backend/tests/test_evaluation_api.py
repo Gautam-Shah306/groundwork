@@ -48,8 +48,8 @@ def eval_client(tmp_path: Path):
         yield client, settings, session_factory, eng_id
 
 
-# 45. test_post_runs_201_and_starts_background_run
-def test_post_runs_201_and_starts_background_run(eval_client) -> None:
+# 45. test_post_runs_202_and_starts_background_run
+def test_post_runs_202_and_starts_background_run(eval_client) -> None:
     client, settings, session_factory, eng_id = eval_client
 
     with patch("app.api.evaluation._start_runner_thread") as mock_thread:
@@ -57,12 +57,10 @@ def test_post_runs_201_and_starts_background_run(eval_client) -> None:
             f"/api/engagements/{eng_id}/evaluation/runs",
             json={"sample_size": 20, "drafts_sample": 0},
         )
-        assert resp.status_code == 201
+        assert resp.status_code == 202
         data = resp.json()
-        assert data["id"] is not None
-        assert data["sample_size"] == 20
-        assert data["status"] == "running"
-        assert len(data["config_fingerprint"]) == 64
+        assert "run_id" in data
+        run_id = data["run_id"]
         mock_thread.assert_called_once()
 
     # Verify audit event
@@ -74,7 +72,31 @@ def test_post_runs_201_and_starts_background_run(eval_client) -> None:
             )
         )
         assert audit is not None
-        assert audit.entity_id == str(data["id"])
+        assert audit.entity_id == str(run_id)
+
+
+# A7.10 test_get_run_serves_cached_summary_without_calling_provider
+def test_get_run_serves_cached_summary_without_calling_provider(eval_client) -> None:
+    client, settings, session_factory, eng_id = eval_client
+    with session_factory() as session:
+        run = EvalRun(
+            engagement_id=eng_id,
+            model="cached-model",
+            sample_size=10,
+            status=EvalRunStatus.completed,
+            results={"summary": {"category_accuracy": 0.9}},
+        )
+        session.add(run)
+        session.commit()
+        run_id = run.id
+
+    with patch("app.llm.factory.get_provider") as mock_gp:
+        resp = client.get(f"/api/engagements/{eng_id}/evaluation/runs/{run_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["results"]["summary"]["category_accuracy"] == 0.9
+        # Provider factory was NEVER called
+        mock_gp.assert_not_called()
 
 
 # 46. test_post_runs_409_when_run_already_in_progress

@@ -30,8 +30,24 @@ def test_wilson_score_interval_formula() -> None:
 
 # 20. test_wilson_returns_zero_on_empty_sample
 def test_wilson_returns_zero_on_empty_sample() -> None:
-    assert wilson(0, 0) == (0.0, 0.0)
-    assert wilson(5, 0) == (0.0, 0.0)
+    assert wilson(0, 0) is None
+    assert wilson(5, 0) is None
+
+
+# A7.1 test_wilson_interval_known_values
+def test_wilson_interval_known_values() -> None:
+    res_50 = wilson(50, 100)
+    assert res_50 is not None
+    assert abs(res_50[0] - 0.4038) <= 0.001
+    assert abs(res_50[1] - 0.5962) <= 0.001
+
+    res_10 = wilson(10, 10)
+    assert res_10 is not None
+    assert abs(res_10[0] - 0.7224) <= 0.002
+    assert abs(res_10[1] - 1.0) <= 0.001
+
+    assert wilson(0, 0) is None
+    assert wilson(5, 0) is None
 
 
 # 21. test_summary_metrics_perfect_predictions
@@ -100,6 +116,21 @@ def test_summary_metrics_category_accuracy_counts_failed_as_incorrect() -> None:
     res = compute_evaluation_metrics(items, tickets)
     summary = res["summary"]
     assert summary["category_accuracy"] == 0.5
+    assert summary["category_accuracy_completed"] == 1.0
+
+
+# A7.2 test_category_accuracy_strict_counts_failures_as_wrong_and_completed_only_excludes_them
+def test_category_accuracy_strict_counts_failures_as_wrong_and_completed_only_excludes_them() -> None:
+    tickets = load_eval_tickets()[:10]
+    items = []
+    for i, t in enumerate(tickets):
+        if i < 6:
+            items.append(EvalItemRecord(ticket_id=t.id, status="success", predicted_category=t.true_category, predicted_priority=t.true_priority))
+        else:
+            items.append(EvalItemRecord(ticket_id=t.id, status="error", error_code="timeout"))
+    res = compute_evaluation_metrics(items, tickets)
+    summary = res["summary"]
+    assert summary["category_accuracy"] == 0.6
     assert summary["category_accuracy_completed"] == 1.0
 
 
@@ -206,7 +237,7 @@ def test_missed_high_count_and_rate() -> None:
 
     res = compute_evaluation_metrics([i1, i2], [t_high1, t_high2])
     pm = res["priority_metrics"]
-    assert pm["missed_high"]["count"] == 2
+    assert pm["missed_high"]["count"] == 1
     assert pm["missed_high"]["rate"] == 1.0
     assert pm["truth_high_no_prediction"]["count"] == 1
     assert pm["truth_high_no_prediction"]["rate"] == 0.5
@@ -231,6 +262,45 @@ def test_priority_errors_by_cause_signals_exact_is_always_zero() -> None:
     res = compute_evaluation_metrics(items, tickets)
     causes = res["priority_metrics"]["priority_errors_by_cause"]
     assert causes["signals_exact_but_priority_wrong"] == 0
+
+
+# A7.3 test_priority_errors_by_cause_and_exact_signals_never_give_wrong_priority
+def test_priority_errors_by_cause_and_exact_signals_never_give_wrong_priority() -> None:
+    from app.triage.priority import evaluate_priority
+    config = load_triage_config()
+    all_signals = list(config.signals.keys())
+    test_signal_sets = [
+        [],
+        [all_signals[0]],
+        all_signals[:2],
+        all_signals[:3],
+        all_signals[2:5],
+        [all_signals[0], all_signals[-1]],
+    ]
+    for idx, sigs in enumerate(test_signal_sets):
+        dec = evaluate_priority(sigs, config=config)
+        p_val = dec.priority.value if hasattr(dec.priority, "value") else str(dec.priority)
+        t = EvalTicket(
+            id=f"EV-{idx:03d}",
+            body="test ticket body with enough words to be parsed properly",
+            channel="chat",
+            language="en",
+            true_category="order_tracking",
+            true_signals=sigs,
+            true_priority=p_val,
+            is_ambiguous=False,
+        )
+        item = EvalItemRecord(
+            ticket_id=t.id,
+            status="success",
+            predicted_category=t.true_category,
+            predicted_signals=sigs,
+            predicted_priority=p_val,
+        )
+        res = compute_evaluation_metrics([item], [t], config=config)
+        causes = res["priority_metrics"]["priority_errors_by_cause"]
+        assert causes["signals_exact_but_priority_wrong"] == 0
+        assert res["priority_metrics"]["priority_accuracy"] == 1.0
 
 
 # 31. test_priority_errors_by_cause_categorises_missed_spurious_both

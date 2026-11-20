@@ -95,7 +95,8 @@ export function EvaluationTab({
   const handleStartRun = async (payload: CreateEvalRunPayload) => {
     setErrorMessage(null);
     try {
-      const newRun = await createEvalRun(engagementId, payload);
+      const resp = await createEvalRun(engagementId, payload);
+      const newRun = await fetchEvalRun(engagementId, resp.run_id);
       setRuns((prev) => [newRun, ...prev]);
       setSelectedRunId(newRun.id);
       setActiveRun(newRun);
@@ -188,6 +189,32 @@ export function EvaluationTab({
         disabled={!llmConfigured}
       />
 
+      {/* Live region announcing completion */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="eval-live-announcer"
+      >
+        {activeRun && activeRun.status === "completed"
+          ? `Evaluation run ${activeRun.id} completed. Category accuracy: ${activeRun.results?.summary?.category_accuracy_pct}%.`
+          : ""}
+      </div>
+
+      {/* Empty state when no runs exist */}
+      {runs.length === 0 && !activeRun && (
+        <div className="rounded-card border border-border/80 bg-surface p-8 text-center space-y-3">
+          <h3 className="font-display text-[18px] text-ink font-normal">
+            No evaluations run yet
+          </h3>
+          <p className="text-[13px] text-muted max-w-xl mx-auto">
+            Run an evaluation to test the production triage classifier against 150 held-out synthetic tickets.
+            Calculates strict category accuracy with 95% Wilson score interval, deterministic priority conformance,
+            and subgroup slices.
+          </p>
+        </div>
+      )}
+
       {/* Progress card if active run is running or paused */}
       {activeRun && (activeRun.status === "running" || activeRun.status === "paused") && (
         <ProgressCard
@@ -205,6 +232,7 @@ export function EvaluationTab({
           <SlicesTable slices={activeRun.results.slices} />
           <FailureCasesList
             failureCases={activeRun.results.failure_cases}
+            draftChecks={activeRun.results.draft_checks || (activeRun.results as any).draft_check}
             onViewAllFailed={handleLoadFailedItems}
             failedItems={failedItems}
             isLoadingFailedItems={isLoadingFailed}

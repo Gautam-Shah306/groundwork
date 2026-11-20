@@ -12,6 +12,7 @@ export interface ProgressCardProps {
 export function ProgressCard({ run, onResume, onCancel }: ProgressCardProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
   const isPaused = run.status === "paused";
   const isRunning = run.status === "running";
@@ -53,12 +54,13 @@ export function ProgressCard({ run, onResume, onCancel }: ProgressCardProps) {
     }
   };
 
-  const handleCancel = async () => {
+  const handleConfirmCancel = async () => {
     setIsActionLoading(true);
     try {
       await onCancel(run.id);
     } finally {
       setIsActionLoading(false);
+      setShowConfirmCancel(false);
     }
   };
 
@@ -121,13 +123,13 @@ export function ProgressCard({ run, onResume, onCancel }: ProgressCardProps) {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions with Confirmation Step */}
         <div className="flex items-center justify-end gap-2 pt-2">
           {isPaused && (
             <Button
               variant="secondary"
               onClick={handleResume}
-              disabled={isActionLoading}
+              disabled={isActionLoading || showConfirmCancel}
               className="text-[13px]"
             >
               <Play size={13} className="mr-1 fill-current" />
@@ -135,15 +137,37 @@ export function ProgressCard({ run, onResume, onCancel }: ProgressCardProps) {
             </Button>
           )}
 
-          <Button
-            variant="tertiary"
-            onClick={handleCancel}
-            disabled={isActionLoading}
-            className="text-[13px] text-muted hover:text-ink"
-          >
-            <XCircle size={14} className="mr-1 text-muted" />
-            Cancel run
-          </Button>
+          {showConfirmCancel ? (
+            <div className="flex items-center gap-2 bg-danger-soft/70 border border-danger/30 px-3 py-1.5 rounded-button text-[12px]">
+              <span className="text-danger font-medium">Cancel this run?</span>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={isActionLoading}
+                className="font-semibold text-danger hover:underline px-1"
+              >
+                Yes, cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConfirmCancel(false)}
+                disabled={isActionLoading}
+                className="text-muted hover:text-ink px-1"
+              >
+                Keep running
+              </button>
+            </div>
+          ) : (
+            <Button
+              variant="tertiary"
+              onClick={() => setShowConfirmCancel(true)}
+              disabled={isActionLoading}
+              className="text-[13px] text-muted hover:text-ink"
+            >
+              <XCircle size={14} className="mr-1 text-muted" />
+              Cancel run
+            </Button>
+          )}
         </div>
       </div>
     </Card>

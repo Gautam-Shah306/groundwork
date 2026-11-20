@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { EngagementProvider } from "../context/EngagementContext";
 import {
+  EvaluationTab,
   RunControls,
   ProgressCard,
   ResultsSummary,
@@ -218,12 +219,19 @@ describe("Agent evaluation frontend components", () => {
     expect(screen.getByText("meta-llama/llama-3-70b")).toBeInTheDocument();
   });
 
-  // 6. run controls render draft toggle
-  it("run controls render draft toggle", () => {
+  // 6. provider disclosure line and call estimate are shown, and estimate changes with draft checkbox
+  it("provider disclosure line and call estimate are shown, and estimate changes with draft checkbox", async () => {
+    const user = userEvent.setup();
     render(<RunControls onStartRun={vi.fn()} isRunning={false} />);
-    const checkbox = screen.getByLabelText(/Also check draft replies on first 21 tickets/i);
+    expect(screen.getByText(/The synthetic evaluation tickets are sent to the configured AI provider\./i)).toBeInTheDocument();
+    expect(screen.getByText(/about 150/i)).toBeInTheDocument();
+    const checkbox = screen.getByLabelText(/Also check a sample of 21 draft replies/i);
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+    expect(screen.getByText(/about 171/i)).toBeInTheDocument();
   });
 
   // 7. run evaluation button disabled when run in progress
@@ -249,7 +257,7 @@ describe("Agent evaluation frontend components", () => {
     // Click 20 (smoke)
     await user.click(screen.getByRole("radio", { name: /20 \(Smoke\)/i }));
     // Check draft checkbox
-    await user.click(screen.getByLabelText(/Also check draft replies/i));
+    await user.click(screen.getByLabelText(/Also check a sample of 21 draft replies/i));
 
     // Submit
     await user.click(screen.getByRole("button", { name: /Run evaluation/i }));
@@ -314,27 +322,38 @@ describe("Agent evaluation frontend components", () => {
     expect(onResume).toHaveBeenCalledWith(pausedRun.id);
   });
 
-  // 15. clicking cancel triggers onCancel
-  it("clicking cancel triggers onCancel callback", async () => {
+  // 15. cancel requires confirmation
+  it("clicking cancel shows confirmation step before triggering onCancel", async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn().mockResolvedValue(undefined);
     render(<ProgressCard run={MOCK_RUN} onResume={vi.fn()} onCancel={onCancel} />);
     await user.click(screen.getByRole("button", { name: /Cancel run/i }));
+    // Confirmation shown
+    expect(screen.getByText(/Cancel this run\?/i)).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+    // Confirm cancel
+    await user.click(screen.getByRole("button", { name: /Yes, cancel/i }));
     expect(onCancel).toHaveBeenCalledWith(MOCK_RUN.id);
   });
 
-  // 16. completed run renders results summary with all 6 KPI tiles
+  // 16. completed run renders results summary with all 6 headline KPI tiles without targets
   it("completed run renders results summary with all 6 KPI tiles", () => {
     render(<ResultsSummary run={MOCK_RUN} />);
     expect(screen.getByText(/Strict Category Acc\./i)).toBeInTheDocument();
     expect(screen.getByText("86.7%")).toBeInTheDocument();
-    expect(screen.getByText(/Lenient Category Acc\./i)).toBeInTheDocument();
     expect(screen.getByText(/Priority Accuracy/i)).toBeInTheDocument();
     expect(screen.getByText("93.3%")).toBeInTheDocument();
-    expect(screen.getByText(/Queue Routing Acc\./i)).toBeInTheDocument();
-    expect(screen.getAllByText("92%")).toHaveLength(2);
-    expect(screen.getByText(/Reviewer Change Proxy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Queue Accuracy/i)).toBeInTheDocument();
+    expect(screen.getByText("92%")).toBeInTheDocument();
+    expect(screen.getAllByText(/Reviewer-Change Proxy/i).length).toBeGreaterThan(0);
     expect(screen.getByText("14%")).toBeInTheDocument();
+    expect(screen.getByText(/Failed Items/i)).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText(/Missed-High Count/i)).toBeInTheDocument();
+    // Labels and absence of targets
+    expect(screen.getAllByText("Measured outcome").length).toBe(6);
+    expect(screen.getAllByText("on synthetic tickets").length).toBe(6);
+    expect(screen.queryByText(/target/i)).not.toBeInTheDocument();
   });
 
   // 17. strict accuracy tile displays Wilson interval in subtitle
@@ -346,8 +365,8 @@ describe("Agent evaluation frontend components", () => {
   // 18. confusion matrix renders true categories as rows, predicted as columns + No prediction
   it("confusion matrix renders true categories as rows, predicted as columns + No prediction", () => {
     render(<ConfusionMatrix results={MOCK_RESULTS} />);
-    expect(screen.getByText("True \\ Pred")).toBeInTheDocument();
-    expect(screen.getByText("None")).toBeInTheDocument();
+    expect(screen.getAllByText("True \\ Pred").length).toBe(2);
+    expect(screen.getAllByText("None").length).toBeGreaterThan(0);
     expect(screen.getAllByText("order_tracking").length).toBeGreaterThan(0);
     expect(screen.getAllByText("damaged_item").length).toBeGreaterThan(0);
   });
@@ -376,10 +395,10 @@ describe("Agent evaluation frontend components", () => {
     expect(screen.getByText("English tickets")).toBeInTheDocument();
     expect(screen.getByText("Hinglish tickets")).toBeInTheDocument();
     expect(screen.getByText("Ambiguous tickets")).toBeInTheDocument();
-    expect(screen.getByText("Short tickets (<100 chars)")).toBeInTheDocument();
+    expect(screen.getByText("Short tickets (<12 words)")).toBeInTheDocument();
     expect(screen.getByText("Urgency / Delay tickets")).toBeInTheDocument();
 
-    const lowFlags = screen.getAllByText("Low n (<30)");
+    const lowFlags = screen.getAllByText(/Low confidence \(n below 30\)/i);
     expect(lowFlags.length).toBe(2); // is_ambiguous (25) and short (20)
   });
 
@@ -388,7 +407,7 @@ describe("Agent evaluation frontend components", () => {
     render(<FailureCasesList failureCases={MOCK_RESULTS.failure_cases} />);
     expect(screen.getByText(/#1 EV-012/i)).toBeInTheDocument();
     expect(screen.getByText(/High priority ticket under-prioritised to medium\./i)).toBeInTheDocument();
-    expect(screen.getByText(/"My dining table arrived split in two halves\.…"/i)).toBeInTheDocument();
+    expect(screen.getByText(/My dining table arrived split in two halves/i)).toBeInTheDocument();
   });
 
   // 23. clicking view all failed tickets toggles the complete failure list
@@ -449,5 +468,55 @@ describe("Agent evaluation frontend components", () => {
     expect(formatAuditSentence(entries[2])).toBe("Operator paused evaluation run #1");
     expect(formatAuditSentence(entries[3])).toBe("Operator resumed evaluation run #1");
     expect(formatAuditSentence(entries[4])).toBe("Operator cancelled evaluation run #1");
+  });
+
+  // 26. how-this-is-calculated expander shows definitions
+  it("how-this-is-calculated expander toggles formula explanation", async () => {
+    const user = userEvent.setup();
+    render(<ResultsSummary run={MOCK_RUN} />);
+    const expandButtons = screen.getAllByRole("button", { name: /How this is calculated/i });
+    expect(expandButtons.length).toBeGreaterThan(0);
+    await user.click(expandButtons[0]);
+    expect(screen.getByText(/Strict category accuracy =/i)).toBeInTheDocument();
+  });
+
+  // 27. failure cases render ticket text as plain text with true vs predicted
+  it("failure cases render ticket text strictly as plain text", () => {
+    render(
+      <FailureCasesList
+        failureCases={[
+          {
+            ticket_id: "EV-999",
+            subject: "Broken bowl",
+            body: "My ceramics arrived in pieces. Please refund immediately.",
+            true_category: "damaged_item",
+            predicted_category: "product_questions",
+            true_priority: "high",
+            predicted_priority: "low",
+            true_signals: ["item_damaged_or_defective"],
+            predicted_signals: [],
+            reason: "Category misclassified as product_questions (expected damaged_item).",
+          },
+        ]}
+      />
+    );
+    expect(screen.getByText(/#1 EV-999/i)).toBeInTheDocument();
+    expect(screen.getByText("My ceramics arrived in pieces. Please refund immediately.")).toBeInTheDocument();
+    expect(screen.getByText("damaged_item")).toBeInTheDocument();
+    expect(screen.getByText("product_questions")).toBeInTheDocument();
+  });
+
+  // 28. unknown run status renders safely
+  it("unknown run status renders safely with neutral status pill", () => {
+    const weirdRun = { ...MOCK_RUN, id: 99, status: "unsupported_status" as any };
+    render(<RunHistory runs={[weirdRun]} onSelectRun={vi.fn()} />);
+    expect(screen.getByText("unsupported_status")).toBeInTheDocument();
+  });
+
+  // 29. empty state before any run explains what the evaluation does
+  it("empty state before any run explains what the evaluation does", () => {
+    render(<EvaluationTab engagementId={1} configuredModel="openai/gpt-oss-20b" llmConfigured={true} />);
+    expect(screen.getByText(/No evaluations run yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Run an evaluation to test the production triage classifier/i)).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { AlertCircle, Play } from "lucide-react";
 import { Button, Card } from "../ui";
 import type { CreateEvalRunPayload } from "../../lib/api";
 
@@ -19,6 +19,8 @@ export function RunControls({
   const [sampleSize, setSampleSize] = useState<number>(150);
   const [checkDrafts, setCheckDrafts] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const approxCalls = checkDrafts ? sampleSize + 21 : sampleSize;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ export function RunControls({
           {/* Sample size selector */}
           <div className="space-y-2">
             <label className="text-[12px] font-semibold uppercase tracking-wider text-muted">
-              Sample Size
+              Sample Size (10 – 150)
             </label>
             <div
               role="radiogroup"
@@ -105,7 +107,7 @@ export function RunControls({
               htmlFor="eval-check-drafts"
               className="text-[13px] text-ink cursor-pointer select-none"
             >
-              Also check draft replies on first 21 tickets
+              Also check a sample of 21 draft replies (uses more provider calls)
             </label>
           </div>
 
@@ -123,9 +125,28 @@ export function RunControls({
           </div>
         </div>
 
-        <p className="text-[12px] text-muted">
-          Runs in background with 2 s pacing. Estimated time: ~20s for 20, ~2m for 50, ~5m for 150.
-        </p>
+        {/* Actionable message when disabled */}
+        {disabled && (
+          <div className="flex items-center gap-2 text-[13px] text-warning bg-warning-soft/60 border border-warning/20 p-2.5 rounded-button">
+            <AlertCircle size={15} />
+            <span>AI provider is not configured. Configure LLM settings in .env to run evaluations.</span>
+          </div>
+        )}
+        {isRunning && !disabled && (
+          <div className="flex items-center gap-2 text-[13px] text-muted bg-surface-subtle border border-border p-2.5 rounded-button">
+            <span>An evaluation run is currently active. You can monitor progress below.</span>
+          </div>
+        )}
+
+        {/* Provider disclosure and call estimate */}
+        <div className="space-y-1 text-[12px] text-muted border-t border-border/60 pt-3">
+          <p>
+            The synthetic evaluation tickets are sent to the configured AI provider.
+          </p>
+          <p>
+            Approximate provider calls: <strong>about {approxCalls}</strong> ({sampleSize} classification calls{checkDrafts ? " + 21 draft generation calls" : ""}).
+          </p>
+        </div>
       </form>
     </Card>
   );
