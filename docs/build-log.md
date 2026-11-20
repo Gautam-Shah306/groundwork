@@ -511,3 +511,62 @@ backend\.venv\Scripts\python.exe local\recompute_eval.py
 - Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
 - Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
 - No git commits, staging, or pushes performed (per R12).
+
+
+
+## Prompt 10 — Outcomes Stage (Measure): KPI Framework, Prioritisation, Deterministic Simulation, AI Outcome Review, and Outcomes Page (2026-11-20)
+
+### What was built
+- **Part 0 (Prompt 9b Review Items & Reporting Discipline):**
+  - **0.1 Invariants & Hygiene:** Invariants verified (clean main except current prompt, tags p01–p09, p06b, p08b, p09b exist, `.env` untracked, `local/` git-ignored, no `frontend/src/tests/`).
+  - **0.2 Tooling (`local/facts.py` & `local/report_numbers.py`):** Created `local/facts.py` to extract and print verified repository facts. Updated `local/report_numbers.py` to parse raw JSON evidence from `local/evidence/10/`.
+  - **0.3 Required-Test Mapping:** Verified mapping of 15 required Prompt 9b tests with zero omitted or renamed.
+  - **0.4 Discovery Quote Analysis:** Documented character count, substring matches, clause truncation, and mild paraphrase analysis across Discovery intake transcript quotes.
+  - **0.5 Generated Evaluation Report (`docs/evaluation-results.md`):** Generated deterministic markdown evaluation results report from raw run 2 JSON evidence with Wilson confidence intervals, confusion matrices, and failure cases.
+- **Part A & B (Backend: Outcomes Models, Config, Simulation & Review):**
+  - **A1/B1 (Configuration & KPI Baselines):** Created `config/outcomes.yaml` with 6 KPI catalogue items, simulation bounds/grids, prioritisation weights (0.5 impact, 0.3 effort, 0.2 risk), and 4 seeded interventions. Added `llm_outcomes_max_output_tokens = 4000`. Built `compute_kpi_baseline` computing deterministic KPI baselines directly against active datasets.
+  - **A2/B2 (Target Assumptions & Planned Change):** Added target validation requiring >= 10 character assumptions and worsening-side guard. Computed planned change with `<TypeLabel type="Planned change, not an outcome">`.
+  - **A3/B3 (Intervention Prioritisation):** Implemented weighted scoring formula `0.5 * impact + 0.3 * (6 - effort) + 0.2 * (6 - risk)`. Seeded initial interventions on first query and supported custom human interventions.
+  - **A4/B4 (Deterministic Pilot Simulation):** Implemented pure mathematical simulation with fixed seed (42), `perm[:n_pilot]` split, `u < p_treat` assignment, and bootstrap 95% confidence interval across 2,000 resamples. Added 3x3 sensitivity grid. Replaced rework_share with `reviewer_change_proxy` from latest evaluation run when omitted.
+  - **A5/B5 (AI Draft Outcome Review & Post-Processing):** Built `build_review_snapshot` and `draft_outcome_review` using structured prompt. Implemented post-processing attaching validation flags (missing evidence keys, ungrounded numbers, causal wording) without stripping content. Added human confirmation workflow requiring simulation limit acknowledgement and revoking confirmation upon section edits.
+  - **A6/B6 (REST API & DB Models):** Added `Kpi`, `Intervention`, `PilotSimulation`, `OutcomeReview` models and full REST endpoints under `/api/engagements/{id}/outcomes/` with audit logging.
+- **Part C (Frontend: Outcomes Page & Components):**
+  - Created `ObjectiveSection.tsx`, `KpiTable.tsx`, `InterventionsTable.tsx`, `SimulationSection.tsx`, `ComparisonChart.tsx`, and `ReviewSection.tsx` under `frontend/src/components/outcomes/`.
+  - Created thin `OutcomesPage.tsx` and wired `/outcomes` route.
+  - Added accessible "View as table" toggle to comparison charts and synthetic demo notices.
+  - Added 24 Vitest unit tests in `frontend/src/__tests__/Outcomes.test.tsx`.
+- **Live Checks (L1–L5):**
+  - Executed all live checks against real running backend and real provider (`openai/gpt-oss-20b`) via frontend proxy `http://localhost:5173/api`. Saved 20 JSON evidence files to `local/evidence/10/`.
+  - Recomputed simulation via `local/recompute_sim.py` with plain pandas/numpy, matching SHA256 `0b89921faacfb7b82714e6f568cea074c58be34b0a03ae366883ef86ac11118b` exactly.
+  - Completed secret hygiene scan verifying zero API key leaks and zero reasoning text in DB.
+
+### Test Results & Verification
+- **Backend:** 43 passed across 6 outcomes test files in 44.11s; test coverage 93.11% (gate >= 90%).
+- **Frontend:** 183 passed across 10 test files in 27.43s; `npm run typecheck` 0 errors; `npm run build` completed cleanly in 11.48s.
+- **Live Checks:** L1, L2, L3, L4, L5 all passed with raw evidence saved and verified.
+
+### How to run it
+```powershell
+# Run backend tests with coverage natively
+backend\.venv\Scripts\python.exe -m pytest backend/tests/test_outcomes_*.py --cov=app/outcomes --cov-report=term-missing
+
+# Run frontend tests, typecheck, and build inside Docker
+docker compose exec -T frontend npm run test -- --run
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+
+# Run repository facts and live report extractor
+backend\.venv\Scripts\python.exe local\facts.py
+backend\.venv\Scripts\python.exe local\report_numbers.py
+
+# Run independent deterministic simulation recomputation
+backend\.venv\Scripts\python.exe local\recompute_sim.py
+
+# Run secret hygiene scanner
+backend\.venv\Scripts\python.exe local\check_secret_hygiene.py
+```
+
+### What was not done
+- Stage 05 Deliverables & Final Presentation (Prompt 11 scope).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).

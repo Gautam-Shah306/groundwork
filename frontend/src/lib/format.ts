@@ -134,6 +134,17 @@ export function formatAuditSentence(entry: AuditLogEntry): string {
     reject: "rejected",
     upload: "uploaded",
     load_sample: "loaded sample",
+    kpi_created: "created",
+    kpi_target_updated: "updated target for",
+    kpi_deleted: "deleted",
+    kpi_baseline_recomputed: "recomputed baseline for",
+    intervention_created: "created",
+    intervention_updated: "updated",
+    intervention_deleted: "deleted",
+    simulation_created: "ran",
+    outcome_review_drafted: "drafted",
+    outcome_review_updated: "updated",
+    outcome_review_confirmed: "confirmed",
   };
   const verb = verbMap[entry.action] ?? entry.action;
 
@@ -144,6 +155,10 @@ export function formatAuditSentence(entry: AuditLogEntry): string {
     dataset: "dataset",
     proposal: "triage proposal",
     eval_run: "evaluation run",
+    kpi: "KPI",
+    intervention: "intervention",
+    simulation: "pilot simulation",
+    outcome_review: "outcome review",
   };
   const entityLabel = entityLabelMap[entry.entity_type] ?? entry.entity_type;
 

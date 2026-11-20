@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum as SAEnum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -160,6 +161,17 @@ class Engagement(Base):
     )
     discovery_analyses: Mapped[list[DiscoveryAnalysis]] = relationship(
         back_populates="engagement",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    interventions: Mapped[list[Intervention]] = relationship(
+        back_populates="engagement",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    outcome_review: Mapped[OutcomeReview | None] = relationship(
+        back_populates="engagement",
+        uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
@@ -412,6 +424,13 @@ class Kpi(Base):
     caveats: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Outcomes extensions
+    metric_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    direction: Mapped[str] = mapped_column(String(32), nullable=False, default="lower_is_better")
+    baseline_dataset_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+
     engagement: Mapped[Engagement] = relationship(back_populates="kpis")
 
 
@@ -496,11 +515,67 @@ class PilotSimulation(Base):
         nullable=False,
         index=True,
     )
+    dataset_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eval_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seed: Mapped[int] = mapped_column(Integer, nullable=False, default=42)
     parameters: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     results: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    results_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
 
     engagement: Mapped[Engagement] = relationship(back_populates="pilot_simulations")
+
+
+class Intervention(Base):
+    __tablename__ = "interventions"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    impact: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5
+    effort: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5
+    risk: Mapped[int] = mapped_column(Integer, nullable=False)    # 1-5
+    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="proposed")  # proposed|selected|rejected
+    origin: Mapped[str] = mapped_column(String(32), nullable=False, default="seeded")    # seeded|human
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+
+    engagement: Mapped[Engagement] = relationship(back_populates="interventions")
+
+
+class OutcomeReview(Base):
+    __tablename__ = "outcome_reviews"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("engagements.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    sections: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="ai_draft")  # ai_draft|edited
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")     # draft|confirmed
+    model: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    flags: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    final_recommendation: Mapped[str | None] = mapped_column(String(32), nullable=True)  # continue|modify|expand|stop
+    acknowledged_simulated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    confirmed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, default=utc_now)
+
+    engagement: Mapped[Engagement] = relationship(back_populates="outcome_review")
 
 
 

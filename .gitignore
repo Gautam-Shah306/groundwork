@@ -13,3 +13,4 @@ dist/
 htmlcov/
 .pytest_cache/
 local/
+backend/pytest-output.txt

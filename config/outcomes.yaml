@@ -1,0 +1,79 @@
+kpi_catalogue:
+  - metric_id: first_response_time
+    name: First-response time
+    unit: hours
+    direction: lower_is_better
+    description: Median hours from ticket creation to first agent or triage response among valid tickets.
+  - metric_id: triage_time
+    name: Triage time
+    unit: hours
+    direction: lower_is_better
+    description: Median hours from ticket creation to initial queue assignment among valid tickets.
+  - metric_id: resolution_time
+    name: Resolution time
+    unit: hours
+    direction: lower_is_better
+    description: Median hours from ticket creation to final resolution among resolved tickets.
+  - metric_id: sla_attainment
+    name: SLA attainment
+    unit: percent
+    direction: higher_is_better
+    description: Percentage of response-valid tickets meeting the first-response SLA threshold.
+  - metric_id: reassignment_rate
+    name: Reassignment rate
+    unit: percent
+    direction: lower_is_better
+    description: Percentage of tickets reassigned across queues or agents.
+  - metric_id: backlog_ageing
+    name: Backlog ageing
+    unit: count
+    direction: lower_is_better
+    description: Count of unresolved open tickets remaining at the evaluation cutoff timestamp.
+
+simulation:
+  defaults:
+    pilot_share: 0.5
+    reduction_pct: 50.0
+    adoption_pct: 80.0
+    seed: 42
+    bootstrap_resamples: 2000
+  bounds:
+    pilot_share: [0.2, 0.8]
+    reduction_pct: [0.0, 90.0]
+    adoption_pct: [0.0, 100.0]
+    rework_share: [0.0, 1.0]
+  sensitivity_grids:
+    reduction_pct: [25.0, 50.0, 75.0]
+    adoption_pct: [50.0, 80.0, 100.0]
+
+prioritisation:
+  weights:
+    impact: 0.5
+    ease: 0.3
+    safety: 0.2
+
+seeded_interventions:
+  - name: "Triage assistant (AI-proposed category, priority and queue with human approval)"
+    description: "Automated suggestion of category, queue and priority rules with mandatory human review before routing."
+    impact: 4
+    effort: 3
+    risk: 2
+    rationale: "Seeded example estimate: reduces initial triage delay while human approval preserves safety."
+  - name: "Reply template library"
+    description: "Curated and policy-verified response templates for top routine inquiry categories."
+    impact: 2
+    effort: 1
+    risk: 1
+    rationale: "Seeded example estimate: speeds agent responses on routine inquiries with minimal operational risk."
+  - name: "Evening coverage change"
+    description: "Adjust shift scheduling to extend specialist coverage across 18:00-22:00 peak hours."
+    impact: 4
+    effort: 4
+    risk: 2
+    rationale: "Seeded example estimate: directly targets the identified evening first-response backlog bottleneck."
+  - name: "Routing rule fix between order and returns queues"
+    description: "Clarify routing criteria to eliminate duplicate queue bouncing between Order Support and Returns."
+    impact: 3
+    effort: 2
+    risk: 2
+    rationale: "Seeded example estimate: reduces the high reassignment rate observed in returns and order tracking."

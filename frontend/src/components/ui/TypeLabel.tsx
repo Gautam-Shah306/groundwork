@@ -19,7 +19,9 @@ export const EVIDENCE_TYPES = [
   "Simulated result",
 ] as const;
 
-export type EvidenceType = (typeof EVIDENCE_TYPES)[number];
+export type EvidenceType =
+  | (typeof EVIDENCE_TYPES)[number]
+  | "Planned change, not an outcome";
 
 export interface TypeLabelProps {
   type: EvidenceType;
@@ -34,6 +36,7 @@ const TYPE_STYLES: Record<EvidenceType, string> = {
   "Approved action": "bg-success-soft text-success border-success/25",
   "Measured outcome": "bg-success-soft text-success border-success/25",
   "Simulated result": "bg-warning-soft text-warning border-warning/30",
+  "Planned change, not an outcome": "bg-surface-subtle text-muted border-border",
 };
 
 function renderTypeIcon(type: EvidenceType): ReactNode {
@@ -52,6 +55,8 @@ function renderTypeIcon(type: EvidenceType): ReactNode {
       return <BarChart3 size={12} strokeWidth={1.75} aria-hidden="true" />;
     case "Simulated result":
       return <FlaskConical size={12} strokeWidth={1.75} aria-hidden="true" />;
+    case "Planned change, not an outcome":
+      return <BarChart3 size={12} strokeWidth={1.75} aria-hidden="true" />;
   }
 }
 

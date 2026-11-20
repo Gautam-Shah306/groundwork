@@ -135,7 +135,7 @@ Groundwork includes a contextual **Investigation assistant** on the Diagnostics 
   - `LLM_PROVIDER=gemini` or `LLM_PROVIDER=groq`
   - `LLM_API_KEY=` _(your private key)_
   - `LLM_MODEL=` _(required; no built-in default, e.g. `openai/gpt-oss-20b` or `gemini-2.5-flash`)_
-  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=2500`, `LLM_REASONING_EFFORT=low`
+  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=2500`, `LLM_OUTCOMES_MAX_OUTPUT_TOKENS=4000`, `LLM_REASONING_EFFORT=low`
 - **Never commit `.env` or your API key:** `.env` is git-ignored; never paste keys into docs, commits, issues, or logs.
 - **Behaviour without a key:** Groundwork starts and runs normally with `LLM_API_KEY` or `LLM_MODEL` unset. `/api/health` reports `llm_configured: false` (without exposing keys or model names), all deterministic Diagnostics screens work normally, and the Assistant panel displays setup guidance with input disabled.
 
@@ -149,6 +149,15 @@ Groundwork provides an automated, resumable evaluation suite to benchmark the Su
   - `EVAL_MAX_RATE_LIMIT_WAITS=3` (default: up to 3 retries on rate limits before pausing)
   - `EVAL_MAX_WAIT_SECONDS=120` (default: maximum backoff sleep per rate-limit event)
 - **UI Workspace:** Access evaluation runs under **Prototypes > Agent evaluation** tab with live progress polling, headline KPI tiles (with Wilson 95% confidence intervals), confusion matrices, slice breakdowns, and failure inspection.
+
+## Outcomes (Measure)
+
+Groundwork provides a KPI framework, intervention prioritisation matrix, deterministic pilot simulation, and human-confirmed outcome review under the **Outcomes** stage. See [`docs/outcomes.md`](./docs/outcomes.md) for complete details.
+
+- **Deterministic Baselines:** Baselines for 6 catalogue KPIs are computed directly from the active dataset via deterministic metrics functions. Targets must improve upon baselines and supply substantive assumptions.
+- **Intervention Prioritisation:** Multi-criteria weighted scoring ($0.5 \times \text{Impact} + 0.3 \times (6 - \text{Effort}) + 0.2 \times (6 - \text{Risk})$) ranks candidate changes.
+- **Deterministic Pilot Simulation:** Models the mathematical consequences of assumed pilot parameters on historical ticket distributions with bootstrap 95% confidence intervals and sensitivity analysis. Clearly labelled "Simulated result".
+- **Outcome Review & Audit:** Synthesizes engagement data into an executive review with evidence keys and numeric grounding checks. Operator confirmation required before presentation; subsequent edits revoke confirmation.
 
 ## Run Tests
 
@@ -186,4 +195,5 @@ docker compose exec -T frontend npm run build
 - [Project documentation (`docs/`)](./docs/)
   - [Project brief (`docs/project-brief.md`)](./docs/project-brief.md)
   - [UI/UX design system (`docs/design-system.md`)](./docs/design-system.md)
+  - [Outcomes & KPI framework (`docs/outcomes.md`)](./docs/outcomes.md)
   - [Build log (`docs/build-log.md`)](./docs/build-log.md)

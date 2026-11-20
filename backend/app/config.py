@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 2500
     llm_discovery_max_output_tokens: int = 6000
     llm_triage_max_output_tokens: int = 2000
+    llm_outcomes_max_output_tokens: int = 4000
     llm_reasoning_effort: str = "low"
     database_url: str = "sqlite:///./data/groundwork.db"
     cors_origins: str = "http://localhost:5173"

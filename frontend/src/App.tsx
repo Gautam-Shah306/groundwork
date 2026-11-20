@@ -9,6 +9,7 @@ import { DiscoveryPage } from "./pages/DiscoveryPage";
 import { EngagementsPage } from "./pages/EngagementsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PrototypesPage } from "./pages/PrototypesPage";
+import { OutcomesPage } from "./pages/OutcomesPage";
 import { StagePlaceholderPage } from "./pages/StagePlaceholderPage";
 
 export interface AppRoutesProps {
@@ -39,7 +40,8 @@ export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
       item.id !== "engagements" &&
       item.id !== "diagnostics" &&
       item.id !== "discovery" &&
-      item.id !== "prototypes"
+      item.id !== "prototypes" &&
+      item.id !== "outcomes"
   );
 
   return (
@@ -51,6 +53,7 @@ export function AppRoutes({ isDev = import.meta.env.DEV }: AppRoutesProps) {
           <Route path="/discovery" element={<DiscoveryPage />} />
           <Route path="/diagnostics" element={<DiagnosticsPage />} />
           <Route path="/prototypes" element={<PrototypesPage />} />
+          <Route path="/outcomes" element={<OutcomesPage />} />
           {placeholderItems.map((item) => (
             <Route
               key={item.id}

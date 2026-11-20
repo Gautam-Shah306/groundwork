@@ -63,6 +63,21 @@ EVAL_RUNS_COLUMNS: dict[str, str] = {
     "finished_at": "DATETIME",
 }
 
+KPIS_COLUMNS: dict[str, str] = {
+    "metric_id": "VARCHAR(64) DEFAULT ''",
+    "direction": "VARCHAR(32) DEFAULT 'lower_is_better'",
+    "baseline_dataset_id": "INTEGER",
+    "target_value": "FLOAT",
+    "status": "VARCHAR(32) DEFAULT 'active'",
+}
+
+PILOT_SIMULATIONS_COLUMNS: dict[str, str] = {
+    "dataset_id": "INTEGER",
+    "eval_run_id": "INTEGER",
+    "seed": "INTEGER DEFAULT 42",
+    "results_hash": "VARCHAR(64) DEFAULT ''",
+}
+
 
 def ensure_columns(engine: Engine, table: str, columns: dict[str, str]) -> None:
     """Add columns to an existing table if they are missing (column-exists guard)."""
@@ -88,6 +103,8 @@ def init_db(engine: Engine) -> None:
     ensure_columns(engine, "agent_runs", {"usage": "JSON"})
     ensure_columns(engine, "triage_proposals", TRIAGE_PROPOSALS_COLUMNS)
     ensure_columns(engine, "eval_runs", EVAL_RUNS_COLUMNS)
+    ensure_columns(engine, "kpis", KPIS_COLUMNS)
+    ensure_columns(engine, "pilot_simulations", PILOT_SIMULATIONS_COLUMNS)
     with engine.connect() as conn:
         if engine.dialect.name == "sqlite":
             conn.exec_driver_sql(

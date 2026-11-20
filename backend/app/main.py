@@ -16,6 +16,7 @@ from app.api.engagements import router as engagements_router
 from app.api.evaluation import router as evaluation_router
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
+from app.api.outcomes import router as outcomes_router
 from app.api.triage import router as triage_router
 from app.config import Settings, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
@@ -74,6 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(assistant_router)
     application.include_router(triage_router)
     application.include_router(evaluation_router)
+    application.include_router(outcomes_router)
     return application
 
 

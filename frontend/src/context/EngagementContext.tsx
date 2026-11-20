@@ -29,7 +29,7 @@ export interface EngagementContextValue {
   deleteEngagement: (id: number) => Promise<void>;
 }
 
-const EngagementContext = createContext<EngagementContextValue | undefined>(
+export const EngagementContext = createContext<EngagementContextValue | undefined>(
   undefined
 );
 

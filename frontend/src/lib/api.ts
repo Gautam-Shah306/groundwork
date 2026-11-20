@@ -1608,3 +1608,490 @@ export async function cancelEvalRun(
   }
   return (await response.json()) as EvalRunSummary;
 }
+
+// ---------------------------------------------------------------------------
+// Outcomes (Stage 04: Measure)
+// ---------------------------------------------------------------------------
+
+export interface KpiBaseline {
+  metric_id: string;
+  name: string;
+  value: number;
+  unit: string;
+  direction: "lower_is_better" | "higher_is_better";
+  n: number;
+  period_start: string | null;
+  period_end: string | null;
+  scope: string[];
+}
+
+export interface PlannedChange {
+  absolute_change: number;
+  relative_change_pct: number;
+  label: string;
+}
+
+export interface Kpi {
+  id: number;
+  engagement_id: number;
+  metric_id: string;
+  name: string;
+  definition: string;
+  calculation: string;
+  unit: string;
+  direction: "lower_is_better" | "higher_is_better";
+  baseline: KpiBaseline | null;
+  target_value: number | null;
+  target_assumption: string | null;
+  planned_change: PlannedChange | null;
+  is_primary: boolean;
+  is_stale: boolean;
+  status: string;
+}
+
+export interface KpiCatalogueItem {
+  metric_id: string;
+  name: string;
+  description: string;
+  direction: "lower_is_better" | "higher_is_better";
+  unit: string;
+  benchmark_range: [number, number];
+  display_format: string;
+}
+
+export interface KpiCreateInput {
+  metric_id: string;
+  name?: string;
+  target_value?: number;
+  target_assumption?: string;
+  is_primary?: boolean;
+}
+
+export interface KpiUpdateInput {
+  target_value?: number | null;
+  target_assumption?: string | null;
+  is_primary?: boolean;
+}
+
+export interface Intervention {
+  id: number;
+  engagement_id: number;
+  name: string;
+  description: string;
+  impact: number;
+  effort: number;
+  risk: number;
+  score: number;
+  rationale: string;
+  status: "proposed" | "selected" | "rejected";
+  origin: "catalogue" | "human";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InterventionCreateInput {
+  name: string;
+  description?: string;
+  impact: number;
+  effort: number;
+  risk: number;
+  rationale?: string;
+  status?: "proposed" | "selected" | "rejected";
+}
+
+export interface InterventionUpdateInput {
+  name?: string;
+  description?: string;
+  impact?: number;
+  effort?: number;
+  risk?: number;
+  rationale?: string;
+  status?: "proposed" | "selected" | "rejected";
+}
+
+export interface SimulationParameters {
+  pilot_share?: number;
+  reduction_pct?: number;
+  adoption_pct?: number;
+  rework_share?: number;
+  seed?: number;
+}
+
+export interface SimulationSensitivityCell {
+  reduction_pct: number;
+  adoption_pct: number;
+  difference_hours: number;
+  median_pilot_after: number;
+}
+
+export interface SimulationResult {
+  id: number;
+  engagement_id: number;
+  parameters: {
+    pilot_share: number;
+    reduction_pct: number;
+    adoption_pct: number;
+    rework_share: number;
+    seed: number;
+    bootstrap_resamples: number;
+    sla_threshold_hours: number;
+  };
+  rework_share_source: string;
+  note: string;
+  sample_sizes: {
+    n: number;
+    n_pilot: number;
+    n_comparison: number;
+    n_treated: number;
+    p_treat: number;
+  };
+  comparison_group: {
+    n: number;
+    median: number;
+    q25: number;
+    q75: number;
+    iqr: number;
+    sla_attainment_pct: number;
+  };
+  pilot_group_before: {
+    n: number;
+    median: number;
+    q25: number;
+    q75: number;
+    iqr: number;
+  };
+  pilot_group_after: {
+    n: number;
+    median: number;
+    q25: number;
+    q75: number;
+    iqr: number;
+    sla_attainment_pct: number;
+  };
+  effect: {
+    difference_of_medians_hours: number;
+    bootstrap_ci_95: [number, number];
+    interpretation: string;
+  };
+  sensitivity_grid: SimulationSensitivityCell[];
+  created_at: string;
+}
+
+export interface OutcomeReviewSections {
+  objective?: string;
+  what_improved?: Array<string | { text: string; basis?: string; evidence_key?: string }>;
+  what_did_not?: Array<string | { text: string; basis?: string; evidence_key?: string }>;
+  limitations?: Array<string | { text: string; basis?: string; evidence_key?: string }>;
+  recommendation?: {
+    value: "continue" | "iterate" | "pivot" | "stop";
+    rationale: string;
+  };
+  next_steps?: Array<string | { text: string; basis?: string; evidence_key?: string }>;
+  [key: string]: unknown;
+}
+
+export interface OutcomeReviewFlag {
+  code: string;
+  message: string;
+  field?: string;
+}
+
+export interface OutcomeReview {
+  id: number;
+  engagement_id: number;
+  sections: OutcomeReviewSections;
+  snapshot: Record<string, unknown>;
+  flags: OutcomeReviewFlag[];
+  status: "draft" | "confirmed";
+  final_recommendation: "continue" | "iterate" | "pivot" | "stop" | null;
+  confirmed_at: string | null;
+  acknowledged_simulated: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OutcomeReviewConfirmInput {
+  final_recommendation: "continue" | "iterate" | "pivot" | "stop";
+  acknowledged_simulated: boolean;
+}
+
+export async function getKpiCatalogue(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<KpiCatalogueItem[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpi-catalogue`),
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load KPI catalogue");
+  }
+  return (await response.json()) as KpiCatalogueItem[];
+}
+
+export async function getKpis(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<Kpi[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpis`),
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load KPIs");
+  }
+  return (await response.json()) as Kpi[];
+}
+
+export async function createKpi(
+  engagementId: number,
+  payload: KpiCreateInput
+): Promise<Kpi> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpis`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to create KPI");
+  }
+  return (await response.json()) as Kpi;
+}
+
+export async function updateKpi(
+  engagementId: number,
+  kpiId: number,
+  payload: KpiUpdateInput
+): Promise<Kpi> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpis/${kpiId}`),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to update KPI");
+  }
+  return (await response.json()) as Kpi;
+}
+
+export async function deleteKpi(
+  engagementId: number,
+  kpiId: number
+): Promise<void> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpis/${kpiId}`),
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to delete KPI");
+  }
+}
+
+export async function recomputeKpiBaseline(
+  engagementId: number,
+  kpiId: number
+): Promise<Kpi> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/kpis/${kpiId}/recompute-baseline`),
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to recompute KPI baseline");
+  }
+  return (await response.json()) as Kpi;
+}
+
+export async function getInterventions(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<Intervention[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/interventions`),
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load interventions");
+  }
+  return (await response.json()) as Intervention[];
+}
+
+export async function createIntervention(
+  engagementId: number,
+  payload: InterventionCreateInput
+): Promise<Intervention> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/interventions`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to create intervention");
+  }
+  return (await response.json()) as Intervention;
+}
+
+export async function updateIntervention(
+  engagementId: number,
+  interventionId: number,
+  payload: InterventionUpdateInput
+): Promise<Intervention> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/interventions/${interventionId}`),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to update intervention");
+  }
+  return (await response.json()) as Intervention;
+}
+
+export async function deleteIntervention(
+  engagementId: number,
+  interventionId: number
+): Promise<void> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/interventions/${interventionId}`),
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to delete intervention");
+  }
+}
+
+export async function runSimulation(
+  engagementId: number,
+  payload: SimulationParameters
+): Promise<SimulationResult> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/simulation`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to run pilot simulation");
+  }
+  return (await response.json()) as SimulationResult;
+}
+
+export async function getSimulations(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<SimulationResult[]> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/simulations`),
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load simulations");
+  }
+  return (await response.json()) as SimulationResult[];
+}
+
+export async function getOutcomeReview(
+  engagementId: number,
+  signal?: AbortSignal
+): Promise<OutcomeReview | null> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/review`),
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to load outcome review");
+  }
+  return (await response.json()) as OutcomeReview;
+}
+
+export async function draftOutcomeReview(
+  engagementId: number,
+  payload?: { objective_text?: string; confirm_replace?: boolean }
+): Promise<OutcomeReview> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/review/draft`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload || {}),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to draft outcome review");
+  }
+  return (await response.json()) as OutcomeReview;
+}
+
+export async function updateOutcomeReview(
+  engagementId: number,
+  payload: { sections: OutcomeReviewSections }
+): Promise<OutcomeReview> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/review`),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to update outcome review");
+  }
+  return (await response.json()) as OutcomeReview;
+}
+
+export async function confirmOutcomeReview(
+  engagementId: number,
+  payload: OutcomeReviewConfirmInput
+): Promise<OutcomeReview> {
+  const response = await fetch(
+    buildApiUrl(`/api/engagements/${engagementId}/outcomes/review/confirm`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!response.ok) {
+    throw await extractStructuredApiError(response, "Unable to confirm outcome review");
+  }
+  return (await response.json()) as OutcomeReview;
+}
