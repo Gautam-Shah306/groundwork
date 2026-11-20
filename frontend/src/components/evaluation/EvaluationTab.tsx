@@ -146,7 +146,7 @@ export function EvaluationTab({
     }
   };
 
-  const isAnyRunning = runs.some((r) => r.status === "running");
+  const isAnyRunning = Array.isArray(runs) ? runs.some((r) => r.status === "running") : false;
 
   return (
     <div className="space-y-8">

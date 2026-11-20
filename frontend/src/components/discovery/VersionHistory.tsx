@@ -30,7 +30,7 @@ export function VersionHistory({
 }: VersionHistoryProps) {
   const [confirmRestoreId, setConfirmRestoreId] = useState<number | null>(null);
 
-  if (versions.length === 0) {
+  if (!versions || versions.length === 0) {
     return (
       <Card className="p-4 flex flex-col gap-2">
         <div className="flex items-center gap-2">

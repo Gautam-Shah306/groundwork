@@ -570,3 +570,81 @@ backend\.venv\Scripts\python.exe local\check_secret_hygiene.py
 - Stage 05 Deliverables & Final Presentation (Prompt 11 scope).
 - Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
 - No git commits, staging, or pushes performed (per R12).
+
+
+---
+
+## [Prompt 11 of 11] - 2026-11-20
+
+### What was built
+
+- **Part 0 (Evaluation Test Repair & Run 2 Verification):**
+  - **Root Cause:** Path resolution in `backend/app/evaluation/dataset.py` used relative paths (`data/eval_tickets.json`, `config/queues.yaml`) assuming execution from the repository root; when tests ran from `backend/`, `FileNotFoundError` caused 39 test failures. Resolved by anchoring file lookups to `get_project_root()`.
+  - **Field Schema Conformance:** Verified `EvalTicket` accepts the 10 real keys from `data/eval_tickets.json` (`id`, `subject`, `body`, `channel`, `language`, `true_category`, `true_signals`, `true_priority`, `is_ambiguous`, `secondary_category`), deriving `true_queue`, `is_hinglish`, and `is_short` deterministically in code. Added `test_eval_ticket_input_fields_equal_the_real_file_keys`.
+  - **Run 2 Verification & Branch Decision:** Created `local/verify_run2.py` without application imports. Recomputed all evaluation metrics directly from raw predictions against real ground-truth labels. Confirmed exact match (to 4 decimal places) with stored run summary and `docs/evaluation-results.md`: 90.67% strict category accuracy, 91.89% completed accuracy, 93.33% lenient accuracy, 74.00% priority accuracy, 92.00% queue routing accuracy, 28.67% reviewer-change proxy, 4 missed-high tickets, 6 under-prioritised, 31 over-prioritised. All 150 ticket IDs confirmed valid. **Branch A** selected and verified.
+- **Part A (Backend Improvements):**
+  - **A1 Review Overreach Fix:** Updated `REVIEW_SYSTEM_PROMPT` in `backend/app/outcomes/review.py` to instruct the LLM that evaluation metrics have no baseline and must not claim improvement/comparison. Added deterministic post-processing flag `comparison_without_prior_value` for measured evaluation claims with comparison wording. Added 3 unit tests in `test_outcomes_review.py`.
+  - **A2 Config Consistency:** Standardized `LLM_TIMEOUT_SECONDS` default to `60` across `Settings` (`backend/app/config.py`), `.env.example`, `docker-compose.yml`, and documentation (`docs/agent.md`). Added unit test `test_llm_timeout_default_is_consistent_across_settings`.
+  - **A3 Coverage Gate:** Achieved **91.84%** total backend test coverage (gate $\ge 90\%$) across all 465 passed tests (0 failed). Added `test_outcomes_api.py` covering all outcome endpoints, bringing `api/outcomes.py` to 88%, `api/evaluation.py` to 91%, `evaluation/runner.py` to 87%, and `triage/check.py` to 91% (all $\ge 85\%$).
+  - **A4 Demo Preparation CLI:** Implemented `backend/app/demo.py` (`python -m app.demo prepare [--reset-outcomes] [--clear-proposals] [--yes]`) ensuring idempotent state for Engagement 1 without LLM calls. Added 7 unit tests in `test_demo.py`.
+  - **A5 One-off Engagement 1 Cleanup:** Created and executed `local/cleanup_eng1.py`, pruning 5 duplicate human interventions and stale review data while preserving evaluation runs and the active dataset.
+  - **A6 Discovery Quote Verification Normalization:** Analyzed unverified quotes from Engagement 1; identified trailing sentence punctuation normalization gap on clause quotes. Updated `verify_quote` in `backend/app/text_utils.py` and added 2 unit tests in `test_grounding.py`.
+- **Part B (Documentation):**
+  - **B1 Overview Verification:** Created `docs/overview-verification.md` recording that `docs/overview.md` was absent, and documenting the complete verified inventory of repository facts, numbers, and vocabulary.
+  - **B2 Case Study:** Authored `docs/case-study.md` covering all 9 required sections with evidence tags (`Observed fact`, `Measured outcome on synthetic tickets`, `Simulated result`) and placeholders `[GAUTAM TO COMPLETE: ...]`.
+  - **B3 Demo Script:** Authored `docs/demo-script.md` detailing a 5-minute timed walkthrough with exact clicks, spoken lines, fallbacks for rate limits, and answers to the top 5 client questions.
+  - **B4 README Rewrite:** Comprehensively rewrote `README.md` with fictional client scope, synthetic data notice, 4-stage breakdown, Docker and native quick start, full environment variable configuration table, Mermaid architecture diagram, R1–R12 summary, test commands, and non-goals.
+  - **B5 Build Log Final Entry:** Appended this comprehensive entry to `docs/build-log.md`.
+- **Part C (Frontend):**
+  - **C1 Route-Level Lazy Loading:** Converted all application routes in `frontend/src/App.tsx` and `AppShell.tsx` to `React.lazy` with `Suspense` and designed `<PageLoadingState />`. Configured Vite chunking with Recharts isolated in its own chunk. Reduced initial bundle size from 998.68 kB to 302.81 kB (a 69.7% reduction). Added 2 tests in `LazyLoading.test.tsx`.
+  - **C2 Accessibility Testing (`axe-core`):** Added `axe-core` dev dependency. Authored 7 accessibility tests in `Accessibility.test.tsx` covering all 6 routes (and both Prototypes tabs). Resolved `nested-interactive` violation in `UploadPanel.tsx` and defensive null check in `VersionHistory.tsx`. All routes verified free of serious/critical accessibility violations with color-contrast disabled for jsdom. Synced `package-lock.json` to host.
+  - **C3 Quality Checklist Audit:** Audited all 6 screens against `docs/design-system.md` Section 16 checklist.
+  - **C4 Responsive Pass:** Audited responsive breakpoints across mobile (375 px), tablet (768 px), and desktop (1280 px). Authored `docs/manual-checks.md`.
+- **Part D (Rehearsal via Live Frontend Proxy):**
+  - Executed one-line LLM smoke test successfully with `openai/gpt-oss-20b` via Groq adapter.
+  - **D1:** Executed `python -m app.demo prepare --clear-proposals --yes`.
+  - **D2:** Executed Assistant query *"Why are customers waiting so long?"* on Engagement 1 via proxy (`POST /api/engagements/1/assistant/runs`). Polled run 24 to `completed` in 3.92s with tool call `get_findings`, generating 7 blocks (3 findings, 3 hypotheses, 1 next step) and 0 grounding warnings. Saved to `local/evidence/11/d2_assistant_run.json` (SHA256: `7b62806cc44e7bbcb1a979da1ca5351495eb6ec583218d2fa8d5ffd8323aa7fa`).
+  - **D3:** Submitted example ticket `Tracking not updating` via proxy (`POST /api/engagements/1/triage/proposals`). Assigned Category `order_tracking`, Signals `delivery_delayed_over_3_days` and `explicit_urgency`, Rule `R-DELAY-URGENT`, Priority `high`, Queue `Order support`, 0 flags, conservative policy draft reply with placeholders `[CUSTOMER_NAME]` and `[AGENT_NAME]`. Left awaiting approval. Saved to `local/evidence/11/d3_triage_proposal.json` (SHA256: `a0341cab21b64c0867f2acbe77c195f6c24ac5d5cb3d5aa22729ae40b5bf7681`).
+  - **D4:** Reconciled demo script values with live triage results.
+
+### Corrections to Earlier Reports
+
+1. **Prompt 9b Vocabulary & Slice Report Errors:** The Prompt 9b report mistakenly listed categories, queues, rules, signals, and slice names that did not exist in `config/queues.yaml` and `config/priority_rules.yaml`. The real, authoritative vocabulary comprises exactly 7 categories, 5 queues, 10 signals, 9 rules, and 5 evaluation slices (`en`, `hinglish`, `is_ambiguous`, `short`, `urgency_or_delay`), verified deterministically in `local/facts.py`.
+2. **Prompt 9b Loader Claims:** The Prompt 9b report claimed the eval loader accepted `true_secondary_categories`, `key_signals`, `turnaround_time_hours`, and `ticket_channel`. None of these keys exist in `data/eval_tickets.json`. `EvalTicket` was updated to accept only the 10 real keys, deriving additional attributes in code.
+3. **Prompt 10 Test Count Error:** The Prompt 10 report claimed 444 tests passed when only 43 outcomes tests had actually been executed during that prompt's verification. In Prompt 11, the full test suite was executed in its entirety: 465 passed backend tests (0 failed) and 192 passed frontend tests (0 failed).
+
+### Test Results & Verification
+
+- **Backend:** 465 passed, 9 warnings in 254.10s across 29 test files; overall coverage 91.84% (gate $\ge 90\%$). Target modules achieved: `api/outcomes.py` (88%), `api/evaluation.py` (91%), `evaluation/runner.py` (87%), `triage/check.py` (91%).
+- **Frontend:** 192 passed across 12 test files in 63.37s inside Docker; `npm run typecheck` 0 errors; `npm run build` completed cleanly in 9.33s with chunk code-splitting.
+- **Repository Facts & Prompts:** Verified with `local/facts.py`. Classification prompt SHA256 matches p10 value `b7a4c9704030f34faffcb6cee563fe9b8764dbc887bce213f9cd74c0bf9877d0`.
+- **Live Rehearsal:** D1, D2, D3, D4 executed via live proxy with saved evidence in `local/evidence/11/`.
+
+### How to run it
+
+```powershell
+# 1. Run demo preparation
+$env:PYTHONPATH='backend'; backend\.venv\Scripts\python.exe -m app.demo prepare --clear-proposals --yes
+
+# 2. Run full backend test suite with coverage
+Push-Location backend
+.\.venv\Scripts\python.exe -m pytest --cov=app --cov-fail-under=90 -q
+Pop-Location
+
+# 3. Run frontend tests, typecheck, and production build inside Docker
+docker compose exec -T frontend npm run test
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+
+# 4. Run repository facts and live report extractor
+backend\.venv\Scripts\python.exe local\facts.py
+backend\.venv\Scripts\python.exe local\report_numbers.py
+
+# 5. Run secret hygiene verification
+backend\.venv\Scripts\python.exe local\check_secret_hygiene.py
+```
+
+### What was not done
+
+- No customer-facing message is ever sent autonomously (forbidden by R3; all decisions remain human-approved).
+- No git staging, committing, or pushing performed (forbidden by R12; user manages git commits).

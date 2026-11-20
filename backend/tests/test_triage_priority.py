@@ -185,3 +185,13 @@ def test_priority_is_deterministic_for_repeated_calls() -> None:
     repeated = [evaluate_priority(signals) for _ in range(10)]
 
     assert all(result == first for result in repeated)
+
+
+def test_triage_check_main_prints_vocabulary_counts(capsys) -> None:
+    from app.triage.check import main
+    main()
+    captured = capsys.readouterr().out
+    assert "Categories (7):" in captured
+    assert "Queues (5):" in captured
+    assert "Signals: 10" in captured
+    assert "Rules: 9" in captured

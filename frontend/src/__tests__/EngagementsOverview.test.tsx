@@ -151,7 +151,7 @@ describe("Engagements and Overview pages", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Loading table data...")).toBeInTheDocument();
+    expect(await screen.findByText("Loading table data...")).toBeInTheDocument();
 
     resolveList(jsonResponse([ENGAGEMENT_ONE], 200));
 

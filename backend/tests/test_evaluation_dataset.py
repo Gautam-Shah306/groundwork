@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from app.config import get_project_root
 from app.evaluation.dataset import (
     EvalTicket,
     compute_config_fingerprint,
@@ -16,6 +17,32 @@ from app.evaluation.dataset import (
     select_sample,
 )
 from app.triage.config import load_triage_config
+
+
+def test_eval_ticket_input_fields_equal_the_real_file_keys() -> None:
+    """Verify that EvalTicket input fields equal the real 10 keys in data/eval_tickets.json."""
+    project_root = get_project_root()
+    eval_path = project_root / "data" / "eval_tickets.json"
+    with eval_path.open("r", encoding="utf-8") as f:
+        raw_items = json.load(f)
+    assert len(raw_items) == 150
+    expected_keys = {
+        "id",
+        "subject",
+        "body",
+        "channel",
+        "language",
+        "true_category",
+        "true_signals",
+        "true_priority",
+        "is_ambiguous",
+        "secondary_category",
+    }
+    for item in raw_items:
+        assert set(item.keys()) == expected_keys
+    ticket_fields = set(EvalTicket.model_fields.keys())
+    derived_fields = {"true_queue", "is_hinglish", "is_short"}
+    assert ticket_fields == expected_keys | derived_fields
 
 
 # 7. test_load_eval_tickets_loads_all_150_valid_tickets
@@ -274,13 +301,14 @@ def test_prompts_and_config_share_no_six_word_sequence_with_eval_tickets() -> No
 
     from app.triage.prompts import build_classification_system_prompt
     prompt_text = build_classification_system_prompt()
-    queues_text = Path("config/queues.yaml").read_text(encoding="utf-8")
-    rules_text = Path("config/priority_rules.yaml").read_text(encoding="utf-8")
+    root = get_project_root()
+    queues_text = (root / "config/queues.yaml").read_text(encoding="utf-8")
+    rules_text = (root / "config/priority_rules.yaml").read_text(encoding="utf-8")
 
     combined_ref = f"{prompt_text}\n{queues_text}\n{rules_text}"
     ref_6grams = extract_6grams(combined_ref)
 
-    eval_tickets = json.loads(Path("data/eval_tickets.json").read_text(encoding="utf-8"))
+    eval_tickets = json.loads((root / "data/eval_tickets.json").read_text(encoding="utf-8"))
     eval_text = " ".join(f"{t.get('subject', '')} {t.get('body', '')}" for t in eval_tickets)
     eval_6grams = extract_6grams(eval_text)
 

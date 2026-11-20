@@ -53,8 +53,9 @@ CORE REVIEW PRINCIPLES:
    - 'simulated': Modeled outcomes produced by the pilot simulation algorithm.
 4. Simulated Transparency: Every simulated claim MUST explicitly contain the word 'simulated' or 'assumed' in its text.
 5. No Causal Wording: You must NEVER use causal language (e.g., 'caused', 'resulted in', 'led to', 'due to', 'proves', 'impact of'). State observed or simulated differences descriptively (e.g., 'showed a difference of', 'was lower than', 'was associated with').
-6. Limitations: Explicitly state operational limitations (e.g., single-run variance, synthetic evaluation data, assumed pilot parameters, unverified manual triage handovers).
-7. Recommendation: Provide an executive recommendation as exactly ONE of: 'continue', 'modify', 'expand', or 'stop', accompanied by a factual rationale grounded strictly in the snapshot data.
+6. Evaluation Metrics Have No Baseline: Evaluation metrics (under 'evaluation') are single-run benchmark results on synthetic eval tickets and have NO baseline in this system. You MUST NOT claim that evaluation metrics improved, degraded, changed, or are higher/lower compared to a baseline or prior value. Report evaluation figures strictly as standalone observed benchmarks.
+7. Limitations: Explicitly state operational limitations (e.g., single-run variance, synthetic evaluation data, assumed pilot parameters, unverified manual triage handovers).
+8. Recommendation: Provide an executive recommendation as exactly ONE of: 'continue', 'modify', 'expand', or 'stop', accompanied by a factual rationale grounded strictly in the snapshot data.
 8. Output Format: Output ONLY valid JSON matching this exact structure with no markdown code fences and no surrounding prose:
 {
   "what_improved": [
@@ -265,6 +266,12 @@ def resolve_evidence_key(snapshot: dict[str, Any], key_path: str) -> tuple[bool,
     return True, curr
 
 
+COMPARISON_PATTERN = re.compile(
+    r"\b(improv(ed|ement|ing)?|increas(ed|ing|e)?|decreas(ed|ing|e)?|higher than|lower than|better than|worse than|compared to|relative to|over baseline|from baseline|reduc(ed|tion|ing)?|gain(s|ed)?|drop(ped)?)\b",
+    re.IGNORECASE,
+)
+
+
 def postprocess_outcome_review(
     draft: dict[str, Any],
     snapshot: dict[str, Any],
@@ -380,6 +387,24 @@ def postprocess_outcome_review(
                         }
                     )
                     break
+
+            # Check comparison without prior value for evaluation metrics
+            is_eval_claim = any(str(k).startswith("evaluation") for k in ev_keys)
+            if is_eval_claim:
+                match = COMPARISON_PATTERN.search(claim_text)
+                if match:
+                    flags.append(
+                        {
+                            "code": "comparison_without_prior_value",
+                            "section": sec_name,
+                            "claim_index": idx,
+                            "phrase": match.group(0),
+                            "message": (
+                                f"Claim references an evaluation metric with comparison wording '{match.group(0)}', "
+                                "but evaluation metrics have no baseline or prior value in this system."
+                            ),
+                        }
+                    )
 
             # Check improvement from baseline only
             if sec_name == "what_improved":

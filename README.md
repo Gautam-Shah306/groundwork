@@ -1,17 +1,79 @@
 # Groundwork
 
-Groundwork is an AI-assisted business operations intelligence workspace that guides an operator from an unstructured client problem through four connected stages: Discover, Diagnose, Build, and Measure. The initial scenario models customer-support operations for a fictional e-commerce company ("Kora Living"), and **all data used in the workspace is synthetic and explicitly labelled as such**; deterministic Python functions compute all metrics, and every agent-proposed action requires human approval and audit logging.
+Groundwork is an AI-assisted business operations intelligence workspace. It guides an operator from an unstructured, vague client problem through four rigorous, evidence-backed stages: **Discover**, **Diagnose**, **Build**, and **Measure**. 
 
-## Prerequisites
+The initial operational scenario models customer support operations for a **fictional** direct-to-consumer home-goods brand (**"Kora Living"**). **All data in this workspace is synthetic and explicitly labelled as such.** Deterministic, unit-tested Python functions compute every metric, percentage, and baseline; no customer-facing message is ever sent autonomously; and every consequential decision requires human approval and audit logging.
 
-- **Python 3.11+** (for native backend execution)
-- **Node.js 20+ and npm** (for native frontend execution), **or Docker Desktop / Docker Engine with Docker Compose** (if running the frontend or full stack in containers)
-- Copy `.env.example` to `.env` if you want to customize environment variables (`.env` is gitignored; the app starts cleanly with an empty `LLM_API_KEY`).
+---
 
-## Run Natively (Windows PowerShell)
+## The Four Stages
 
-### Backend
+```mermaid
+flowchart LR
+    A["01 · Discover<br/>Qualitative problem brief"] --> B["02 · Diagnose<br/>Deterministic metrics"]
+    B --> C["03 · Build<br/>Triage prototype & eval"]
+    C --> D["04 · Measure<br/>KPIs & pilot simulation"]
+```
 
+1. **Stage 01: Discover (`/discovery`)** — Ingests verbatim stakeholder interview notes, identifies operational themes, and drafts a structured, version-controlled problem brief with automated quote-verification and claim-hedging checks.
+2. **Stage 02: Diagnose (`/diagnostics`)** — Ingests support ticket exports (validating against 13 required columns), computes 18 deterministic metrics across latency, volume, backlog, and reassignments, and provides an investigation assistant grounded strictly in tool outputs.
+3. **Stage 03: Build (`/prototypes`)** — Implements an automated support triage prototype: zero-shot intent and signal classification, deterministic priority/queue routing rules, policy-grounded response drafts with placeholder brackets, human proposal approval inbox, and an automated 150-ticket evaluation benchmarking suite.
+4. **Stage 04: Measure (`/outcomes`)** — Tracks 6 core KPIs against computed baselines, prioritises candidate operational interventions using multi-criteria weighted scoring, executes a Monte Carlo pilot simulation with confidence intervals, and synthesizes a human-confirmed executive outcome review.
+
+---
+
+## Architecture
+
+```mermaid
+graph TD
+    User["Operator (Browser)"] <--> Frontend["React + Vite + TypeScript<br/>(Tailwind CSS, Recharts)"]
+    Frontend <--> Proxy["Frontend Proxy (/api)"]
+    Proxy <--> Backend["FastAPI Backend (Python 3.11+)"]
+    
+    subgraph Deterministic Core
+        Backend --> Ingest["Ingest & Data Validation"]
+        Backend --> Metrics["Deterministic Metrics (backend/metrics/)"]
+        Backend --> Rules["Rules Engine (config/priority_rules.yaml)"]
+        Backend --> DB[(SQLite: data/groundwork.db)]
+    end
+    
+    subgraph Human-in-the-Loop AI Orchestration
+        Backend --> Agent["Investigation Assistant & Tool Calling"]
+        Backend --> Triage["Support Triage & Policy Drafting"]
+        Backend --> Provider["LLM Provider (Groq / Gemini)"]
+    end
+```
+
+---
+
+## Non-Negotiable Rules (R1–R12)
+
+Groundwork operates under twelve strict non-negotiable architectural rules:
+The LLM never calculates, estimates, or invents business metrics; all numbers come from deterministic, unit-tested Python functions in `backend/metrics/` (**R1**). Every agent finding must reference the tool call(s) that produced its figures (**R2**). No customer-facing message is ever sent; the agent proposes, a human approves, edits, or rejects, and every decision is written to the audit log (**R3**). Business logic is strictly separated from AI orchestration (**R4**). Agent tools validate arguments with Pydantic and return structured errors (**R5**). `data/answer_key.json` is for generator tests only and is never read or exposed by the app (**R6**). Simulated and synthetic results must be visibly labelled wherever they appear (**R7**). Draft replies use only `knowledge/policies.md` and ticket content, converting unknown facts into bracketed placeholders (**R8**). The UI strictly adheres to the warm-neutral design system, light theme, Inter + Instrument Serif typography, and shared components (**R9**). Every screen implements loading, empty, error, and success states (**R10**). Pytest unit tests cover every metrics function and tool with mocked LLMs (**R11**). Git commits and history are managed manually, never building ahead of prompt scope, and logging changes to `docs/build-log.md` (**R12**).
+
+---
+
+## Quick Start
+
+### 1. Run with Docker Compose (Recommended)
+
+```powershell
+docker compose build
+docker compose up -d
+```
+
+- **Frontend Application:** `http://localhost:5173`
+- **Proxied API Health Check:** `http://localhost:5173/api/health`
+- **Direct Backend API:** `http://localhost:8000/api/health`
+
+To stop containers:
+```powershell
+docker compose down
+```
+
+### 2. Run Natively (Windows PowerShell)
+
+**Backend (Python 3.11+):**
 ```powershell
 python -m venv backend\.venv
 backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
@@ -20,14 +82,7 @@ Push-Location backend
 Pop-Location
 ```
 
-Verify the backend health endpoint:
-
-```powershell
-Invoke-RestMethod http://localhost:8000/api/health
-```
-
-### Frontend (requires Node 20+)
-
+**Frontend (Node.js 20+):**
 ```powershell
 Push-Location frontend
 npm ci
@@ -35,165 +90,89 @@ npm run dev
 Pop-Location
 ```
 
-The frontend runs on `http://localhost:5173` and proxies `/api` requests to `http://localhost:8000` (configurable via `VITE_API_PROXY_TARGET` or `VITE_API_BASE_URL`).
+---
 
-## Run with Docker
+## Configuration Reference
+
+Copy `.env.example` to `.env` to configure settings (the application starts cleanly even if `LLM_API_KEY` is unset):
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `APP_ENV` | `development` | Runtime environment (`development`, `production`, `test`). |
+| `DATABASE_URL` | `sqlite:///./data/groundwork.db` | SQLite connection URL anchored to repo root. |
+| `SEED_ON_START` | `false` | Automatically runs the idempotent Kora Living seed on backend startup. |
+| `LLM_PROVIDER` | `groq` | LLM provider adapter (`groq` or `gemini`). |
+| `LLM_API_KEY` | `""` | Provider API authentication key (never committed or printed). |
+| `LLM_MODEL` | `openai/gpt-oss-20b` | Target LLM model identifier. |
+| `LLM_TIMEOUT_SECONDS` | `60` | HTTP request timeout for LLM provider API calls. |
+| `LLM_MAX_RETRIES` | `2` | Maximum retry attempts for transient provider failures. |
+| `LLM_MAX_OUTPUT_TOKENS` | `2500` | Max generation tokens for assistant and triage classification. |
+| `LLM_DISCOVERY_MAX_OUTPUT_TOKENS` | `6000` | Max generation tokens for structured Discovery brief generation. |
+| `LLM_OUTCOMES_MAX_OUTPUT_TOKENS` | `4000` | Max generation tokens for Outcome review generation. |
+| `LLM_REASONING_EFFORT` | `low` | Reasoning effort level for reasoning models (`low`, `medium`, `high`). |
+| `EVAL_PACING_SECONDS` | `2` | Pacing delay between tickets during evaluation runs. |
+| `EVAL_MAX_RATE_LIMIT_WAITS` | `3` | Max rate-limit pause attempts before pausing evaluation run. |
+| `EVAL_MAX_WAIT_SECONDS` | `120` | Max backoff wait in seconds per rate-limit event. |
+| `CORS_ORIGINS` | `["http://localhost:5173", ...]` | Allowed origins for backend CORS middleware. |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8000` | Target URL for the Vite frontend development proxy. |
+
+---
+
+## Demo Preparation CLI
+
+Prepare the workspace for a live demo deterministically without making any LLM calls:
 
 ```powershell
-docker compose build
-docker compose up -d
+backend\.venv\Scripts\python.exe -m app.demo prepare [--reset-outcomes] [--clear-proposals] [--yes]
 ```
 
-- Frontend shell: `http://localhost:5173`
-- Proxied backend health check: `http://localhost:5173/api/health`
-- Direct backend API: `http://localhost:8000/api/health`
+- `prepare`: Ensures demo engagement 1 exists, ensures exactly 1 active sample dataset, seeds 6 catalogue KPIs with computed baselines, and ensures 4 seeded interventions exist.
+- `--reset-outcomes --yes`: Clears human interventions, pilot simulations, and outcome reviews.
+- `--clear-proposals --yes`: Removes existing triage proposals so the sample ticket can be triaged fresh.
+- *Invariance:* Never modifies or deletes `EvalRun` or `EvalItem` rows.
 
-### Development Override vs. Image-Faithful Runs
+---
 
-By default, `docker compose` automatically merges `docker-compose.override.yml`, which bind-mounts `./backend/app:/app/app:ro` as a development convenience for hot code reloading. To run an image-faithful run using only the built image artifacts (testing true container images without host code mounts):
+## Running Verification Tests
 
-```powershell
-docker compose -f docker-compose.yml up -d --build
-```
-
-Stop and remove containers:
-
-```powershell
-docker compose down
-```
-
-## Database
-
-- **SQLite file location:** `data/groundwork.db` at the repository root (git-ignored via `*.db`). Relative `DATABASE_URL` values such as the default `sqlite:///./data/groundwork.db` are anchored to the repository root natively (`backend/` cwd) and to `/app/data/groundwork.db` in Docker (bind-mounted to `./data`), so both environments share the same database file.
-- **Seed synthetic demo data (idempotent):**
-  ```powershell
-  Push-Location backend
-  .\.venv\Scripts\python.exe -m app.seed
-  Pop-Location
-  ```
-- **Auto-seed on startup:** Set `SEED_ON_START=true` in `.env` (defaults to `false`) to run the idempotent Kora Living seed automatically when the backend starts.
-- **Reset the database:** Stop the backend / Docker containers, remove `data/groundwork.db`, and re-run the seed command:
-  ```powershell
-  Remove-Item data\groundwork.db -ErrorAction SilentlyContinue
-  ```
-
-## Synthetic Data
-
-All operational tickets, evaluation tickets, policies, and ground-truth references belong to the **fictional** company **Kora Living** and are deterministically generated with fixed seed `42` (identical output bytes on every run).
-
-- **Generated files (in `data/`):**
-  - `data/sample_tickets.csv` — 2,000 synthetic support tickets over 8 weeks (`+05:30` IST) with planted operational bottlenecks and exact injected data-quality anomalies.
-  - `data/eval_tickets.json` — 150 varied synthetic triage evaluation tickets (English, Hinglish, ambiguous, short, urgent/delayed).
-  - `data/answer_key.json` — planted-cause reference for tests and documentation only (never read by `backend/app`, per `R6`).
-- **Configuration and policy files:** `config/queues.yaml`, `config/priority_rules.yaml`, and fictional `knowledge/policies.md`.
-- **Regenerate synthetic datasets (PowerShell, native Python 3.11 venv):**
-  ```powershell
-  backend\.venv\Scripts\python.exe scripts\generate_data.py
-  ```
-- **Verify triage configuration:**
-  ```powershell
-  Push-Location backend
-  .\.venv\Scripts\python.exe -m app.triage.check
-  Pop-Location
-  ```
-  See [`docs/data-dictionary.md`](./docs/data-dictionary.md) for the complete schema and vocabularies.
-
-## Discovery Workspace
-
-The **Discovery** workspace transforms qualitative stakeholder interview notes into a structured, testable problem brief (see [`docs/discovery.md`](./docs/discovery.md)).
-
-- **Interview Notes:** Add and manage interview notes with automatic word counts and character tracking.
-- **AI-Assisted Analysis:** Select one or more notes (up to 30,000 characters) and run `POST /api/engagements/{id}/discovery/analyse` to extract themes, symptoms, impacts, hypotheses, known facts, and candidate KPIs.
-- **Deterministic Post-Processing:** Verifies source quotes against notes text, validates number claims, checks hypothesis hedging, bans causal language in problem statements, and restricts candidate KPIs to the 16 approved metrics in the Groundwork metrics registry.
-- **Version History & Safeguards:** Maintains up to 5 version snapshots per engagement. Applying an AI draft over manually edited briefs requires explicit confirmation (`confirm_replace: true`).
-- **Discovery Token Limit (`LLM_DISCOVERY_MAX_OUTPUT_TOKENS`):** Default `6000` tokens to support full structured brief generation across all 13 sections.
-
-## Uploading Data
-
-1. Open **Diagnostics** in the workspace sidebar (with an engagement selected).
-2. Upload any `.csv` ticket export matching the 13 required columns (up to **10 MB** / **50,000 rows**, UTF-8 or UTF-8 with BOM), **or** click **Load sample dataset** to run `data/sample_tickets.csv` through the exact same validation pipeline.
-3. Invalid rows are never dropped — every row is stored with deterministic flags (`all_metrics`, `response_metrics`, `resolution_metrics`, `triage_metrics`) and inspectable via the per-check row drill-down.
-4. Equivalent API endpoints:
-   - `POST /api/engagements/{id}/datasets` (multipart `.csv` file upload)
-   - `POST /api/engagements/{id}/datasets/sample` (loads `data/sample_tickets.csv`)
-   - `GET /api/engagements/{id}/datasets` and `GET /api/engagements/{id}/datasets/{dataset_id}/rows?flag=<code>&page=1&page_size=25`
-   - `DELETE /api/engagements/{id}/datasets/{dataset_id}`
-
-## Metrics and Findings
-
-All operational KPIs, distribution metrics, factor comparisons, and rule-based findings are computed deterministically from stored SQLite ticket rows via `GET /api/engagements/{id}/datasets/{dataset_id}/diagnostics` (read-only, configured in `config/metrics.yaml`). See [`docs/metrics.md`](./docs/metrics.md) for exact formulas, scopes, right-censoring caveats, illustrative SLA thresholds, and finding rules.
-
-## Assistant
-
-Groundwork includes a contextual **Investigation assistant** on the Diagnostics page backed by deterministic analysis tools and numeric grounding checks (see [`docs/agent.md`](./docs/agent.md)).
-
-- **Provider choice (`LLM_PROVIDER`):** Supports `gemini` (Google Gemini) and `groq` (Groq API).
-- **Gemini setup:** Create an API key in Google AI Studio and configure `LLM_PROVIDER=gemini` and `LLM_MODEL=gemini-2.5-flash` in `.env`.
-- **Groq setup:** Create an API key in the Groq Console and configure `LLM_PROVIDER=groq` and `LLM_MODEL=openai/gpt-oss-20b` (or `llama-3.3-70b-versatile`) in `.env`.
-- **Free-tier limits:** Groq free-tier keys enforce strict tokens-per-minute (TPM), requests-per-minute (RPM), and tokens-per-day (TPD) limits. When testing or running investigations on free-tier keys, pause 15–20 seconds between queries to avoid short-window rate limits. If a per-day limit is reached, Groundwork surfaces `llm_quota_exhausted` and offers retry once the daily quota resets.
-- **Local configuration (`.env`):** Copy `.env.example` to `.env` and populate:
-  - `LLM_PROVIDER=gemini` or `LLM_PROVIDER=groq`
-  - `LLM_API_KEY=` _(your private key)_
-  - `LLM_MODEL=` _(required; no built-in default, e.g. `openai/gpt-oss-20b` or `gemini-2.5-flash`)_
-  - Optional tuning defaults: `LLM_TIMEOUT_SECONDS=30`, `LLM_MAX_RETRIES=2`, `LLM_MAX_OUTPUT_TOKENS=2500`, `LLM_OUTCOMES_MAX_OUTPUT_TOKENS=4000`, `LLM_REASONING_EFFORT=low`
-- **Never commit `.env` or your API key:** `.env` is git-ignored; never paste keys into docs, commits, issues, or logs.
-- **Behaviour without a key:** Groundwork starts and runs normally with `LLM_API_KEY` or `LLM_MODEL` unset. `/api/health` reports `llm_configured: false` (without exposing keys or model names), all deterministic Diagnostics screens work normally, and the Assistant panel displays setup guidance with input disabled.
-
-## Evaluation
-
-Groundwork provides an automated, resumable evaluation suite to benchmark the Support Triage pipeline against 150 synthetic labelled tickets (`data/eval_tickets.json`). See [`docs/evaluation.md`](./docs/evaluation.md) for full metric definitions and integrity rules.
-
-- **Integrity Rule:** `data/eval_tickets.json` is a fixed held-out test set. Prompts, categories, and priority rules are never tuned in response to eval results. Runs are cryptographically fingerprinted (SHA-256).
-- **Resumability and Pacing:** Evaluation executes ticket by ticket with configurable pacing and rate-limit backoff:
-  - `EVAL_PACING_SECONDS=2` (default: 2s delay between tickets)
-  - `EVAL_MAX_RATE_LIMIT_WAITS=3` (default: up to 3 retries on rate limits before pausing)
-  - `EVAL_MAX_WAIT_SECONDS=120` (default: maximum backoff sleep per rate-limit event)
-- **UI Workspace:** Access evaluation runs under **Prototypes > Agent evaluation** tab with live progress polling, headline KPI tiles (with Wilson 95% confidence intervals), confusion matrices, slice breakdowns, and failure inspection.
-
-## Outcomes (Measure)
-
-Groundwork provides a KPI framework, intervention prioritisation matrix, deterministic pilot simulation, and human-confirmed outcome review under the **Outcomes** stage. See [`docs/outcomes.md`](./docs/outcomes.md) for complete details.
-
-- **Deterministic Baselines:** Baselines for 6 catalogue KPIs are computed directly from the active dataset via deterministic metrics functions. Targets must improve upon baselines and supply substantive assumptions.
-- **Intervention Prioritisation:** Multi-criteria weighted scoring ($0.5 \times \text{Impact} + 0.3 \times (6 - \text{Effort}) + 0.2 \times (6 - \text{Risk})$) ranks candidate changes.
-- **Deterministic Pilot Simulation:** Models the mathematical consequences of assumed pilot parameters on historical ticket distributions with bootstrap 95% confidence intervals and sensitivity analysis. Clearly labelled "Simulated result".
-- **Outcome Review & Audit:** Synthesizes engagement data into an executive review with evidence keys and numeric grounding checks. Operator confirmation required before presentation; subsequent edits revoke confirmation.
-
-## Run Tests
-
-### Backend (pytest + coverage gate >= 90%)
-
+### Backend Tests (pytest with 90% coverage gate)
 ```powershell
 Push-Location backend
-.\.venv\Scripts\python.exe -m pytest --cov=app --cov-fail-under=90
+.\.venv\Scripts\python.exe -m pytest --cov=app --cov-fail-under=90 -q
 Pop-Location
 ```
 
-### Frontend (Vitest, TypeScript check, production build)
-
-Natively (with Node 20+):
-
-```powershell
-Push-Location frontend
-npm run test
-npm run typecheck
-npm run build
-Pop-Location
-```
-
-Via Docker (with Compose running, when Node is not installed natively):
-
+### Frontend Tests (Vitest inside Docker)
 ```powershell
 docker compose exec -T frontend npm run test
 docker compose exec -T frontend npm run typecheck
 docker compose exec -T frontend npm run build
 ```
 
-## Documentation
+---
 
-- [Agent rules (`AGENTS.md`)](./AGENTS.md)
-- [Project documentation (`docs/`)](./docs/)
-  - [Project brief (`docs/project-brief.md`)](./docs/project-brief.md)
-  - [UI/UX design system (`docs/design-system.md`)](./docs/design-system.md)
-  - [Outcomes & KPI framework (`docs/outcomes.md`)](./docs/outcomes.md)
-  - [Build log (`docs/build-log.md`)](./docs/build-log.md)
+## Documentation Index
+
+- [`AGENTS.md`](./AGENTS.md) — Operational instructions, stack rules, and R1–R12 non-negotiables.
+- [`docs/project-brief.md`](./docs/project-brief.md) — Executive product scope and requirements.
+- [`docs/design-system.md`](./docs/design-system.md) — UI design tokens, components, accessibility, and quality checklist.
+- [`docs/data-dictionary.md`](./docs/data-dictionary.md) — Ticket data schema, categories, signals, and routing queues.
+- [`docs/discovery.md`](./docs/discovery.md) — Discovery workspace architecture and grounding rules.
+- [`docs/metrics.md`](./docs/metrics.md) — Exact mathematical formulas and scopes for all 18 deterministic metrics.
+- [`docs/agent.md`](./docs/agent.md) — Investigation assistant architecture, tool definitions, and error handling.
+- [`docs/evaluation.md`](./docs/evaluation.md) — Evaluation harness methodology, Wilson intervals, and slice definitions.
+- [`docs/evaluation-results.md`](./docs/evaluation-results.md) — Baseline benchmark results across the 150-ticket eval set.
+- [`docs/outcomes.md`](./docs/outcomes.md) — Outcomes stage guide, KPI baselines, and Monte Carlo pilot simulation.
+- [`docs/case-study.md`](./docs/case-study.md) — Comprehensive Kora Living customer support operations case study.
+- [`docs/demo-script.md`](./docs/demo-script.md) — 5-minute timed live walkthrough script with fallbacks and client FAQs.
+- [`docs/manual-checks.md`](./docs/manual-checks.md) — Visual and responsive verification checklist across 375, 768, and 1280 px.
+- [`docs/build-log.md`](./docs/build-log.md) — Chronological development log across all prompts.
+
+---
+
+## Limitations and Non-Goals
+
+1. **No Autonomous Dispatch:** Groundwork will never automatically send an email or webhook to a customer. An operator must review and confirm every proposed action.
+2. **Synthetic Data Focus:** All pre-packaged operational logs belong to fictional retailer Kora Living. The app is designed for demonstration, benchmarking, and prototyping before production CRM integration.
+3. **No Metric Calculation via LLM:** Prompts are explicitly barred from computing aggregations or trends. All quantitative statements must be backed by deterministic Python functions.
+4. **Desktop-First Optimization:** While fully responsive down to 375 px mobile viewports, complex multi-column diagnostic tables and slice matrices are optimized for 1280 px+ operational workstations.

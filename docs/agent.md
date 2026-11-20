@@ -131,7 +131,7 @@ Groundwork supports two production LLM providers via `LLM_PROVIDER`:
 - **Model round trips:** max `6` per investigation run (hitting the cap returns the partial trace plus a `"The investigation stopped at its limit..."` limitation block).
 - **Tool calls:** max `10` per run (hitting the cap returns the partial trace plus a limitation block).
 - **Overall run timeout:** `60` seconds.
-- **Per-request provider timeout:** `LLM_TIMEOUT_SECONDS` (default `30` s).
+- **Per-request provider timeout:** `LLM_TIMEOUT_SECONDS` (default `60` s).
 - **Provider retries:** `LLM_MAX_RETRIES` (default `2`), exponential backoff on HTTP `429` and transient `5xx` only; never retries auth (`401`/`403`) or invalid-request (`400`) errors.
 - **Output cap:** `LLM_MAX_OUTPUT_TOKENS` (default `2500`).
 - **Table truncation:** `60` rows per tool result table.

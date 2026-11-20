@@ -1,19 +1,55 @@
+import { lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { EmptyState, Eyebrow } from "./components/ui";
 import { EngagementProvider } from "./context/EngagementContext";
 import { NAV_ITEMS } from "./lib/navigation";
-import { DevComponentsPage } from "./pages/DevComponentsPage";
-import { DiagnosticsPage } from "./pages/DiagnosticsPage";
-import { DiscoveryPage } from "./pages/DiscoveryPage";
-import { EngagementsPage } from "./pages/EngagementsPage";
-import { OverviewPage } from "./pages/OverviewPage";
-import { PrototypesPage } from "./pages/PrototypesPage";
-import { OutcomesPage } from "./pages/OutcomesPage";
-import { StagePlaceholderPage } from "./pages/StagePlaceholderPage";
+
+// Route-level lazy loading (C1)
+const OverviewPage = lazy(() =>
+  import("./pages/OverviewPage").then((m) => ({ default: m.OverviewPage }))
+);
+const EngagementsPage = lazy(() =>
+  import("./pages/EngagementsPage").then((m) => ({ default: m.EngagementsPage }))
+);
+const DiscoveryPage = lazy(() =>
+  import("./pages/DiscoveryPage").then((m) => ({ default: m.DiscoveryPage }))
+);
+const DiagnosticsPage = lazy(() =>
+  import("./pages/DiagnosticsPage").then((m) => ({ default: m.DiagnosticsPage }))
+);
+const PrototypesPage = lazy(() =>
+  import("./pages/PrototypesPage").then((m) => ({ default: m.PrototypesPage }))
+);
+const OutcomesPage = lazy(() =>
+  import("./pages/OutcomesPage").then((m) => ({ default: m.OutcomesPage }))
+);
+const StagePlaceholderPage = lazy(() =>
+  import("./pages/StagePlaceholderPage").then((m) => ({
+    default: m.StagePlaceholderPage,
+  }))
+);
+const DevComponentsPage = lazy(() =>
+  import("./pages/DevComponentsPage").then((m) => ({
+    default: m.DevComponentsPage,
+  }))
+);
 
 export interface AppRoutesProps {
   isDev?: boolean;
+}
+
+export function PageLoadingState() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading page"
+      className="flex min-h-[300px] flex-col items-center justify-center space-y-3 rounded-lg border border-border bg-card p-12 text-center"
+    >
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-ink" />
+      <p className="font-sans text-sm text-muted">Loading page...</p>
+    </div>
+  );
 }
 
 function NotFoundPage() {

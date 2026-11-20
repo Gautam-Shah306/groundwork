@@ -296,3 +296,37 @@ def test_number_inside_string_field_of_cited_result_is_grounded_and_not_in_uncit
     ]
     warnings_uncited = check_grounding(blocks_uncited, trace)
     assert not any(w.code == "number_only_in_uncited_call" for w in warnings_uncited)
+
+
+def test_verify_quote_tolerates_trailing_punctuation_on_clause_quotes() -> None:
+    """Test that verify_quote matches clauses with trailing punctuation added by models."""
+    from app.text_utils import verify_quote
+
+    corpus = (
+        "In the morning when the team signs on, the shared queue is already overflowing "
+        "with overnight emails, web form submissions, and follow-up messages from shoppers "
+        "who say they never heard back."
+    )
+    # Quote with period added by LLM at the end of the clause
+    quote_with_period = (
+        "The shared queue is already overflowing with overnight emails, web form submissions, "
+        "and follow-up messages from shoppers."
+    )
+    assert verify_quote(quote_with_period, corpus) is True
+
+    # Quote with smart hyphen and comma
+    quote_with_dash = (
+        "The shared queue is already overflowing with overnight emails, web form submissions, "
+        "and follow‑up messages from shoppers,"
+    )
+    assert verify_quote(quote_with_dash, corpus) is True
+
+
+def test_verify_quote_rejects_hallucinated_or_substituted_words() -> None:
+    """Test that verify_quote strictly rejects quotes with substituted or altered words."""
+    from app.text_utils import verify_quote
+
+    corpus = "experienced specialists now spend much of their day answering internal slack questions"
+    # Word 'Senior' substituted for 'experienced'
+    hallucinated_quote = "Senior specialists now spend much of their day answering internal slack questions"
+    assert verify_quote(hallucinated_quote, corpus) is False

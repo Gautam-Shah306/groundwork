@@ -104,79 +104,68 @@ export function UploadPanel({
         tabIndex={-1}
       />
 
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={[
+        "flex flex-col items-start gap-3 rounded-card border border-dashed bg-surface p-6 transition-colors",
+        dragActive
+          ? "border-accent bg-accent-soft/50"
+          : "border-border hover:bg-surface-subtle",
+      ].join(" ")}
+    >
       <div
         role="button"
         tabIndex={0}
         aria-label="Upload support ticket CSV file"
         onClick={openFileChooser}
         onKeyDown={handleDropzoneKeyDown}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={[
-          "flex flex-col items-start gap-3 rounded-card border border-dashed bg-surface p-6 transition-colors cursor-pointer",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          dragActive
-            ? "border-accent bg-accent-soft/50"
-            : "border-border hover:bg-surface-subtle",
-        ].join(" ")}
+        className="w-full flex items-center gap-3 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-sm"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-control border border-border bg-surface-subtle text-accent">
-            <Upload size={16} strokeWidth={1.75} aria-hidden="true" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-control border border-border bg-surface-subtle text-accent">
+          <Upload size={16} strokeWidth={1.75} aria-hidden="true" />
+        </div>
+        <div>
+          <div className="text-[13px] font-semibold text-ink">
+            {compact
+              ? "Upload another support-ticket CSV"
+              : "Drop a support-ticket CSV here, or press Enter / click to choose a file"}
           </div>
-          <div>
-            <div className="text-[13px] font-semibold text-ink">
-              {compact
-                ? "Upload another support-ticket CSV"
-                : "Drop a support-ticket CSV here, or press Enter / click to choose a file"}
-            </div>
-            <div className="mt-0.5 text-[12px] text-muted tabular-nums">
-              Accepted format: .csv (UTF-8 / UTF-8 BOM) · Max 10 MB · Max 50,000 rows
-            </div>
+          <div className="mt-0.5 text-[12px] text-muted tabular-nums">
+            Accepted format: .csv (UTF-8 / UTF-8 BOM) · Max 10 MB · Max 50,000 rows
           </div>
         </div>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <Button
-            variant="primary"
-            disabled={uploading}
-            onClick={(event) => {
-              event.stopPropagation();
-              openFileChooser();
-            }}
-          >
-            Choose CSV file
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={uploading}
-            onClick={(event) => {
-              event.stopPropagation();
-              onLoadSample();
-            }}
-          >
-            Load sample dataset
-          </Button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowRequiredColumns((prev) => !prev);
-            }}
-            className="text-[12px] font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            {showRequiredColumns
-              ? "Hide required columns"
-              : "View 13 required columns (data dictionary)"}
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <Button
+          variant="primary"
+          disabled={uploading}
+          onClick={() => openFileChooser()}
+        >
+          Choose CSV file
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={uploading}
+          onClick={() => onLoadSample()}
+        >
+          Load sample dataset
+        </Button>
+        <button
+          type="button"
+          onClick={() => setShowRequiredColumns((prev) => !prev)}
+          className="text-[12px] font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {showRequiredColumns
+            ? "Hide required columns"
+            : "View 13 required columns (data dictionary)"}
+        </button>
+      </div>
 
-        {showRequiredColumns && (
-          <div
-            onClick={(event) => event.stopPropagation()}
-            className="w-full rounded-control border border-border bg-surface-subtle p-3 text-[12px]"
-          >
+      {showRequiredColumns && (
+        <div className="w-full rounded-control border border-border bg-surface-subtle p-3 text-[12px]">
             <div className="font-semibold text-ink">
               Required CSV columns (see docs/data-dictionary.md)
             </div>

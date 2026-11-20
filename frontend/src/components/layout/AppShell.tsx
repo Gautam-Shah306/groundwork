@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { PageLoadingState } from "../../App";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -34,7 +35,9 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onToggleMobileNav={() => setMobileNavOpen((prev) => !prev)} />
         <main className="mx-auto w-full max-w-[var(--content-max-width)] flex-1 px-5 py-8 lg:px-10">
-          <Outlet />
+          <Suspense fallback={<PageLoadingState />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

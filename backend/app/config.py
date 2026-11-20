@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     llm_api_key: str = ""
     llm_model: str = ""
-    llm_timeout_seconds: int = 30
+    llm_timeout_seconds: int = 60
     llm_max_retries: int = 2
     llm_max_output_tokens: int = 2500
     llm_discovery_max_output_tokens: int = 6000

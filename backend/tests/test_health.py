@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-from app.config import Settings
+from app.config import Settings, get_project_root
 from app.main import create_app
 
 
@@ -137,7 +137,7 @@ def test_config_defaults_load_without_env(monkeypatch, tmp_path) -> None:
     assert settings.llm_provider == "gemini"
     assert settings.llm_api_key == ""
     assert settings.llm_model == ""
-    assert settings.llm_timeout_seconds == 30
+    assert settings.llm_timeout_seconds == 60
     assert settings.llm_max_retries == 2
     assert settings.llm_max_output_tokens == 2500
     assert settings.llm_discovery_max_output_tokens == 6000
@@ -183,3 +183,19 @@ def test_production_app_has_no_dependency_overrides() -> None:
     custom_settings = Settings(_env_file=None)
     app_with_custom = create_app(custom_settings)
     assert len(app_with_custom.dependency_overrides) == 0
+
+
+def test_llm_timeout_default_is_consistent_across_settings() -> None:
+    """Test that LLM_TIMEOUT_SECONDS default is 60 in Settings, .env.example, docker-compose, and docs."""
+    settings = Settings(_env_file=None)
+    assert settings.llm_timeout_seconds == 60
+
+    root = get_project_root()
+    env_example = (root / ".env.example").read_text(encoding="utf-8")
+    assert "LLM_TIMEOUT_SECONDS=60" in env_example
+
+    compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "LLM_TIMEOUT_SECONDS:-60" in compose
+
+    docs_agent = (root / "docs/agent.md").read_text(encoding="utf-8")
+    assert "`LLM_TIMEOUT_SECONDS` (default `60` s)" in docs_agent

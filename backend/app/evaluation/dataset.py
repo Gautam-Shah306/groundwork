@@ -13,12 +13,23 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.config import get_project_root
 from app.triage.config import TriageConfig, load_triage_config
 from app.triage.priority import evaluate_priority
 
 TICKET_ID_REGEX = re.compile(r"^(?:EVAL|EV)-[0-9]{3}$")
 VALID_CHANNELS = {"chat", "email", "web_form", "whatsapp"}
 VALID_LANGUAGES = {"en", "hinglish"}
+
+
+def _resolve_relative_path(path: str | Path) -> Path:
+    """Resolve a relative path against the project root if it does not exist locally."""
+    p = Path(path)
+    if not p.is_absolute() and not p.exists():
+        candidate = get_project_root() / p
+        if candidate.exists():
+            return candidate
+    return p
 
 
 class EvalTicket(BaseModel):
@@ -41,7 +52,7 @@ class EvalTicket(BaseModel):
 
 def compute_dataset_fingerprint(path: str | Path = "data/eval_tickets.json") -> str:
     """Compute SHA-256 hex digest of eval tickets file."""
-    p = Path(path)
+    p = _resolve_relative_path(path)
     if not p.exists():
         raise FileNotFoundError(f"Eval tickets file not found at {p}")
     return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -71,18 +82,18 @@ def compute_config_fingerprint(
     hasher.update(class_prompt.encode("utf-8"))
 
     # 2. Draft system prompt text
-    p_path = Path(policies_path)
+    p_path = _resolve_relative_path(policies_path)
     policy_text = p_path.read_text(encoding="utf-8") if p_path.exists() else load_policies_text()
     draft_prompt = build_drafting_system_prompt(policy_text)
     hasher.update(draft_prompt.encode("utf-8"))
 
     # 3. Content of config/queues.yaml
-    q_path = Path(queues_path)
+    q_path = _resolve_relative_path(queues_path)
     if q_path.exists():
         hasher.update(q_path.read_bytes())
 
     # 4. Content of config/priority_rules.yaml
-    r_path = Path(rules_path)
+    r_path = _resolve_relative_path(rules_path)
     if r_path.exists():
         hasher.update(r_path.read_bytes())
 
@@ -126,7 +137,7 @@ def load_eval_tickets(
     - is_short from fewer than 12 words in body
     - true_queue from deterministic route_to_queue / evaluate_priority
     """
-    p = Path(path)
+    p = _resolve_relative_path(path)
     if not p.exists():
         raise FileNotFoundError(f"Eval tickets file not found at {p}")
 

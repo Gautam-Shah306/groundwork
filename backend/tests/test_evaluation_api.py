@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.api.health import resolve_settings
-from app.config import Settings, get_settings
+from app.config import Settings, get_project_root, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
 from app.llm.base import LLMResponse
 from app.llm.fake import FakeProvider
@@ -249,7 +249,7 @@ def test_cancel_run_200_and_sets_status_cancelled(eval_client) -> None:
 
 # 52. test_eval_code_never_modifies_eval_tickets_json
 def test_eval_code_never_modifies_eval_tickets_json() -> None:
-    fp_before = Path("data/eval_tickets.json").read_bytes()
+    fp_before = (get_project_root() / "data/eval_tickets.json").read_bytes()
     # Check that git status doesn't report eval_tickets.json changed
     import hashlib
     assert hashlib.sha256(fp_before).hexdigest() == "b3f97a247255ace5e1eaf3983dcea2e6c1f2432f9c538e4be0430f38b554c561"

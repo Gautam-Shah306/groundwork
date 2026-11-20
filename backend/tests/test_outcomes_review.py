@@ -484,3 +484,71 @@ def test_resolve_evidence_key_edge_cases():
     assert resolve_evidence_key(data, "count.sub") == (False, None)
     assert resolve_evidence_key(data, "nonexistent") == (False, None)
 
+
+def test_review_prompt_states_evaluation_metrics_have_no_baseline():
+    """Test that REVIEW_SYSTEM_PROMPT explicitly states evaluation metrics have no baseline."""
+    assert "Evaluation Metrics Have No Baseline" in REVIEW_SYSTEM_PROMPT or "have NO baseline" in REVIEW_SYSTEM_PROMPT
+    assert "single-run benchmark" in REVIEW_SYSTEM_PROMPT
+    assert "MUST NOT claim that evaluation metrics improved" in REVIEW_SYSTEM_PROMPT
+
+
+def test_review_flags_measured_evaluation_claim_with_comparison_wording():
+    """Test that a claim citing an evaluation metric with comparison wording is flagged."""
+    snapshot = {
+        "evaluation": {
+            "strict_category_accuracy": {"value": 0.9067},
+        },
+    }
+    draft = {
+        "what_improved": [
+            {
+                "claim": "Strict category accuracy improved to 90.7% over baseline.",
+                "basis": "measured",
+                "evidence_keys": ["evaluation.strict_category_accuracy.value"],
+            }
+        ],
+        "what_did_not": [],
+        "limitations": ["Single run variance"],
+        "recommendation": {"value": "continue", "rationale": "High benchmark performance observed."},
+        "next_steps": ["Deploy to shadow testing"],
+    }
+    _, flags = postprocess_outcome_review(draft, snapshot)
+    flag_codes = [f["code"] for f in flags]
+    assert "comparison_without_prior_value" in flag_codes
+    comp_flag = next(f for f in flags if f["code"] == "comparison_without_prior_value")
+    assert comp_flag["section"] == "what_improved"
+    assert comp_flag["claim_index"] == 0
+
+
+def test_comparison_flag_not_raised_for_simulation_or_kpi_baseline_claims():
+    """Test that comparison_without_prior_value is NOT raised for simulation or KPI claims."""
+    snapshot = {
+        "simulation": {
+            "difference": -15.0,
+        },
+        "kpis": [
+            {"name": "frt", "baseline_value": 24.0, "target_value": 12.0},
+        ],
+    }
+    draft = {
+        "what_improved": [
+            {
+                "claim": "Simulated pilot showed a reduction of 15% in median handling time.",
+                "basis": "simulated",
+                "evidence_keys": ["simulation.difference"],
+            },
+            {
+                "claim": "Target FRT is lower than the baseline value of 24.0 hours.",
+                "basis": "baseline",
+                "evidence_keys": ["kpis.0.baseline_value", "kpis.0.target_value"],
+            },
+        ],
+        "what_did_not": [],
+        "limitations": ["Modelled assumptions"],
+        "recommendation": {"value": "continue", "rationale": "Pilot simulations meet business targets."},
+        "next_steps": ["Proceed to live rollout"],
+    }
+    _, flags = postprocess_outcome_review(draft, snapshot)
+    flag_codes = [f["code"] for f in flags]
+    assert "comparison_without_prior_value" not in flag_codes
+

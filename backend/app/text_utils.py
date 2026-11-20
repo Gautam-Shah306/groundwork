@@ -63,6 +63,7 @@ def verify_quote(quote: str, corpus: str) -> bool:
     """Verify that a quote exists verbatim (modulo formatting normalization) in the source corpus.
 
     Returns False if quote is empty or absent. Never uses fuzzy matching.
+    Tolerates trailing punctuation added by models when quoting a clause from a running sentence.
     """
     if not quote or not corpus:
         return False
@@ -70,7 +71,12 @@ def verify_quote(quote: str, corpus: str) -> bool:
     if not norm_quote:
         return False
     norm_corpus = normalize_text_for_comparison(corpus)
-    return norm_quote in norm_corpus
+    if norm_quote in norm_corpus:
+        return True
+    trimmed_quote = norm_quote.rstrip(".,;:!?\"' ")
+    if trimmed_quote and len(trimmed_quote) >= 3 and trimmed_quote in norm_corpus:
+        return True
+    return False
 
 
 def neutralize_delimiter(text: str, delimiter: str, replacement: str | None = None) -> str:
