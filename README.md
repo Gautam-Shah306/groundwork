@@ -48,6 +48,14 @@ docker compose up -d
 - Proxied backend health check: `http://localhost:5173/api/health`
 - Direct backend API: `http://localhost:8000/api/health`
 
+### Development Override vs. Image-Faithful Runs
+
+By default, `docker compose` automatically merges `docker-compose.override.yml`, which bind-mounts `./backend/app:/app/app:ro` as a development convenience for hot code reloading. To run an image-faithful run using only the built image artifacts (testing true container images without host code mounts):
+
+```powershell
+docker compose -f docker-compose.yml up -d --build
+```
+
 Stop and remove containers:
 
 ```powershell

@@ -38,6 +38,7 @@ const PLACEHOLDER_REGEX = /\[[A-Za-z0-9_]+\]/g;
 
 export function DecisionControls({ proposal, onDecisionRecorded }: DecisionControlsProps) {
   const isDecided = proposal.status !== "awaiting_approval";
+  const hasDraftUnavailable = proposal.flags?.some((f) => f.code === "draft_unavailable") ?? false;
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -97,7 +98,7 @@ export function DecisionControls({ proposal, onDecisionRecorded }: DecisionContr
     );
   }
 
-  const activeReply = isEditing ? editedReply : proposal.draft_reply || "";
+  const activeReply = isEditing || hasDraftUnavailable ? editedReply : proposal.draft_reply || "";
   const unresolvedPlaceholders = activeReply.match(PLACEHOLDER_REGEX) || [];
 
   const handleApprove = async () => {
@@ -236,7 +237,7 @@ export function DecisionControls({ proposal, onDecisionRecorded }: DecisionContr
             </div>
           </div>
 
-          <ReplyEditor reply={editedReply} onChange={setEditedReply} />
+          <ReplyEditor reply={editedReply} onChange={setEditedReply} allowedPlaceholders={proposal.allowed_placeholders} />
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button
@@ -255,6 +256,7 @@ export function DecisionControls({ proposal, onDecisionRecorded }: DecisionContr
             <Button
               type="button"
               variant="primary"
+              disabled={isSubmitting || activeReply.trim().length === 0}
               onClick={() => setConfirmingAction("approve")}
             >
               Save & Approve
@@ -297,7 +299,7 @@ export function DecisionControls({ proposal, onDecisionRecorded }: DecisionContr
             <Button
               type="button"
               variant="primary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || activeReply.trim().length === 0}
               onClick={handleApprove}
             >
               {isSubmitting ? "Recording..." : "Confirm Approval"}
@@ -351,31 +353,41 @@ export function DecisionControls({ proposal, onDecisionRecorded }: DecisionContr
 
       {/* Main Buttons Bar */}
       {!isEditing && !confirmingAction && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        <div className="space-y-3">
+          {hasDraftUnavailable && (
+            <ReplyEditor
+              reply={editedReply}
+              onChange={setEditedReply}
+              allowedPlaceholders={proposal.allowed_placeholders}
+            />
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={isSubmitting || (hasDraftUnavailable && activeReply.trim().length === 0)}
+                onClick={() => setConfirmingAction("approve")}
+              >
+                Approve proposal
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit3 size={12} className="mr-1" aria-hidden="true" />
+                Edit proposal
+              </Button>
+            </div>
             <Button
               type="button"
-              variant="primary"
-              onClick={() => setConfirmingAction("approve")}
+              variant="destructive"
+              onClick={() => setConfirmingAction("reject")}
             >
-              Approve proposal
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsEditing(true)}
-            >
-              <Edit3 size={12} className="mr-1" aria-hidden="true" />
-              Edit proposal
+              Reject
             </Button>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => setConfirmingAction("reject")}
-          >
-            Reject
-          </Button>
         </div>
       )}
     </div>

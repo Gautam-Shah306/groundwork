@@ -28,7 +28,7 @@
 ## 4. Double-Charge and Failed-Order Payment Reversals
 
 - **Automatic reversal:** If a customer is charged twice or payment is deducted while the order failed to confirm, the payment gateway initiates an automatic reversal within **5–7 business days**.
-- **Escalation threshold:** If the reversed amount has not reflected in the customer's bank or card statement after **7 business days**, escalate the case to the **Payments** team with the transaction reference (`[TRANSACTION_ID]`) and payment date (`[PAYMENT_DATE]`) for gateway reconciliation.
+- **Escalation threshold:** If the reversed amount has not reflected in the customer's bank or card statement after **7 business days**, escalate the case to the **Payments** team with the transaction reference and payment date for gateway reconciliation.
 
 ## 5. Delivery Timelines
 
@@ -59,11 +59,11 @@
 - **Voice:** Empathetic, calm, respectful, and concise. Acknowledge frustration plainly without defensiveness.
 - **Policy fidelity:** Quote only verified Kora Living policy timelines and requirements from this document. Never make promises beyond policy.
 - **No invented facts:** Never fabricate order IDs, tracking states, courier names, delivery dates, refund amounts, or warehouse confirmations.
-- **Bracketed placeholders:** Whenever a customer-specific detail is not present in the ticket text, insert an explicit bracketed placeholder, such as:
+- **Bracketed placeholders:** Whenever a customer-specific detail is not present in the ticket text, insert an explicit bracketed placeholder from the approved list:
+  - `[CUSTOMER_NAME]`
   - `[ORDER_ID]`
   - `[TRACKING_STATUS]`
-  - `[DELIVERY_DATE]`
   - `[REFUND_AMOUNT]`
-  - `[TRANSACTION_ID]`
-  - `[CUSTOMER_NAME]`
+  - `[DELIVERY_DATE]`
+  - `[AGENT_NAME]`
 - **Human review required:** Draft responses are proposals for operator review only and are never sent directly to customers.

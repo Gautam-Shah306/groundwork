@@ -36,7 +36,7 @@ All problem briefs conform to the `BriefSections` schema (`backend/app/discovery
 Every item in list sections contains:
 - `id`: Unique 8-character hex string.
 - `text`: Concise item content ($\le 300$ chars).
-- `source_quote`: Optional verbatim quote from interview notes ($\le 400$ chars validation limit; prompt requests short single-sentence fragments $\le 200$ chars; Prompt 7 spec originally stated 240 chars).
+- `source_quote`: Optional verbatim quote from interview notes (the Prompt 7 spec said 240 characters; 400 was an implementation decision and remains the validation cap; the discovery prompt asks for short single-sentence fragments of at most 200 characters).
 - `quote_verified`: Boolean set by post-processing (`true` if found in source text, `false` otherwise).
 - `origin`: `"ai"` or `"user"`.
 - `status`: `"ai_draft"`, `"user_edited"`, or `"confirmed"`.

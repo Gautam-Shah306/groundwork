@@ -203,7 +203,7 @@ docker compose down
   - Updated `README.md` with Discovery section, schema summary, and `LLM_DISCOVERY_MAX_OUTPUT_TOKENS` configuration.
   - Updated `.env.example` and `docker-compose.yml` to support `LLM_DISCOVERY_MAX_OUTPUT_TOKENS`.
 - **Part B (Backend Discovery Workspace):**
-  - Implemented Pydantic schema in `backend/app/discovery/schema.py` (`BriefSections`, `Item`, `KnownFactItem`, `QuestionItem`, `ProblemStatement`, `KpiCandidate`). Note on quote validation cap: The Prompt 7 spec specified a 240-character cap for `source_quote`; the 400 validation cap in `backend/app/discovery/schema.py` was an implementation decision to accommodate longer verbatim quotes. The 400 cap is retained as a validation limit, while the prompt is updated in Prompt 8 to request quotes of at most 200 characters.
+  - Implemented Pydantic schema in `backend/app/discovery/schema.py` (`BriefSections`, `Item`, `KnownFactItem`, `QuestionItem`, `ProblemStatement`, `KpiCandidate`). Note on quote validation cap: The Prompt 7 spec said 240 characters for `source_quote`; 400 was an implementation decision to accommodate longer verbatim quotes. The 400 cap is retained as the schema validation cap, while the discovery prompt asks for quotes of at most 200 characters.
   - Added `BriefVersion` (retaining 5 newest versions per engagement) and `DiscoveryAnalysis` tables to `backend/app/models.py`.
   - Built discovery prompt templates and service in `backend/app/discovery/` with 60s timeout, XML notes data-fencing, repair retry loop, and truncation detection.
   - Built deterministic post-processing pipeline in `backend/app/discovery/postprocess.py`: verbatim quote verification against notes, quote length capping, number ungrounded warnings, causal wording warnings in problem statements, hypothesis hedging checks, and automatic downgrade of unverified observed facts to client statements.
@@ -305,6 +305,52 @@ backend\.venv\Scripts\python.exe scripts/verify_triage_live.py
 - Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
 - Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
 - No git commits, staging, or pushes performed (per R12).
+
+
+## Prompt 8b — Triage Conformance, Invariant Audit, Non-Fatal Drafting & Live Re-Verification (2026-11-20)
+
+### What was built
+- **Part 0 (Invariants & Hygiene):**
+  - Verified git status, tags `p01`–`p08`, `p06b`, untracked `.env`, and single frontend prototype test file `frontend/src/__tests__/Prototypes.test.tsx`.
+  - Added `local/` to `.gitignore`, moved local verification scripts to `local/`, and verified that `local/` is untracked and contains zero API secrets.
+  - Kept base `docker-compose.yml` image-faithful by relocating the dev bind mount `./backend/app:/app/app:ro` to `docker-compose.override.yml` with dev documentation in `README.md`.
+- **Part A (Prompt 8 Carry-Over):**
+  - A1: Aligned documentation in `docs/discovery.md` and `docs/build-log.md` clarifying that the Prompt 7 spec specified 240 chars for `source_quote`; 400 was retained as validation cap; prompt asks for <= 200 chars.
+  - A2: Verified 5 agent fallback tests in `backend/tests/test_agent_loop.py`.
+  - A3: Resolved AgentRun 15 figure `65.3%` occurring in `F-TRIAGE` observation text via grounding extension with `include_strings=True`, verified with unit test.
+  - A4: Resolved DiscoveryAnalysis 4 quote verification with non-breaking hyphen `\u2011` normalization in `normalize_text_for_comparison`, verified with unit test.
+  - A5: Updated `llm_discovery_max_output_tokens=6000` default in `config.py`, `.env.example`, `docs/discovery.md`, `docker-compose.yml`, verified with unit test.
+  - A6: Verified live smoke queries against Groq `openai/gpt-oss-20b`.
+- **Part B (Triage Conformance Fixes):**
+  - B1: Enforced closed placeholder vocabulary of exactly 6 tokens (`[CUSTOMER_NAME]`, `[ORDER_ID]`, `[TRACKING_STATUS]`, `[REFUND_AMOUNT]`, `[DELIVERY_DATE]`, `[AGENT_NAME]`) via `ALLOWED_PLACEHOLDERS` in `backend/app/triage/prompts.py`, `backend/app/triage/schema.py`, and `frontend/src/lib/api.ts`. Updated `knowledge/policies.md` and `docs/triage.md`. Added 4 unit tests.
+  - B2: Made draft reply generation non-fatal in `backend/app/triage/tools.py` and `pipeline.py` (`draft_unavailable=True`, empty `draft_reply` on draft failure, classification remains fatal). In frontend `ProposalDetail.tsx`, `DecisionControls.tsx`, `ReplyEditor.tsx`: displayed draft unavailable notice, kept editor editable, blocked approval until manual reply is entered, and badged unknown bracketed tokens as `(unknown)`. Added 5 backend tests and 2 frontend tests.
+  - B3: Verified zero priority rule config drift against `p07`.
+  - B4: Verified all triage invariants (signals-only priority R1/R4, trace argument redaction, audit log text redaction, tool registry isolation, zero outbound messaging R3, 409 already decided, hash index race safety, prompt evaluation isolation).
+  - B5: Updated `_log_validation_error` in `tools.py` to log only Pydantic error `loc` and `type` without raw model text or values.
+- **Part C (Live Triage Verification against Groq / openai/gpt-oss-20b):**
+  - C1: Executed ticket KL-48213 idempotency check (`duplicate: false` -> `duplicate: true`), approval decision with edited reply, conflict guard HTTP 409 on duplicate decision, and audit log redaction verification.
+  - C2: Executed 4 chat tickets on throwaway engagement (KL-51920 double charge, KL-33017 refund overdue with legal escalation, KL-1001 prompt injection neutralization, Hinglish delivery delay). Verified quote accuracy, deterministic priority rules, policy alignment, and deleted throwaway engagement.
+- **Test Suites & Cleanliness:**
+  - Backend: 325 passed, 92% coverage (threshold >= 90%).
+  - Frontend: 8 test files, 129 passed, 0 typecheck errors, production build clean.
+  - Zero API keys in docker logs, git-tracked files, or local files. Zero ticket or reply text in audit details.
+
+### How to run it
+```powershell
+# Run backend tests natively with coverage
+backend\.venv\Scripts\python.exe -m pytest --cov=app --cov-report=term-missing
+
+# Run frontend tests, typecheck, and build inside Docker
+docker compose exec -T frontend npm run test -- --run
+docker compose exec -T frontend npm run typecheck
+docker compose exec -T frontend npm run build
+```
+
+### What was not done
+- Stage 04 Outcomes (Measure) screen and simulated pilot evaluations (scope for future prompts).
+- Outbound customer messaging is not implemented (strictly forbidden by R3; all decisions are human-approved and stored in audit logs).
+- No git commits, staging, or pushes performed (per R12).
+
 
 
 

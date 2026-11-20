@@ -17,7 +17,7 @@ from app.db import (
     init_db,
 )
 from app.llm.base import LLMResponse
-from app.llm.errors import LLMOutputTruncated
+from app.llm.errors import LLMOutputTruncated, LLMRateLimited, LLMTimeout
 from app.llm.fake import FakeProvider
 from app.models import Engagement, ProposalStatus, TriageProposal
 from app.triage.config import load_triage_config
@@ -706,3 +706,250 @@ def test_propose_creates_awaiting_approval_proposal_with_fixed_order_trace_that_
         args_str = json.dumps(step.args)
         assert ticket_body not in args_str
         assert "lamp arrived broken into pieces" not in args_str
+
+
+# ---------------------------------------------------------------------------
+# Prompt 8b Conformance & Invariant Tests
+# ---------------------------------------------------------------------------
+
+# B1 tests
+def test_allowed_placeholders_are_exactly_the_closed_list() -> None:
+    expected = (
+        "[CUSTOMER_NAME]",
+        "[ORDER_ID]",
+        "[TRACKING_STATUS]",
+        "[REFUND_AMOUNT]",
+        "[DELIVERY_DATE]",
+        "[AGENT_NAME]",
+    )
+    assert ALLOWED_PLACEHOLDERS == expected
+    assert len(ALLOWED_PLACEHOLDERS) == 6
+
+
+def test_policies_md_uses_only_allowed_placeholders() -> None:
+    import re
+    policies_text = load_policies_text()
+    tokens = set(re.findall(r"\[[A-Z0-9_]+\]", policies_text))
+    for tok in tokens:
+        assert tok in ALLOWED_PLACEHOLDERS, f"Found unauthorized placeholder in policies.md: {tok}"
+
+
+def test_draft_prompt_lists_exact_placeholders_and_forbids_placeholdering_policy_facts() -> None:
+    policies_text = load_policies_text()
+    prompt = build_drafting_system_prompt(policies_text)
+    for ph in ALLOWED_PLACEHOLDERS:
+        assert ph in prompt
+    assert "Do NOT use placeholders for policy facts" in prompt
+    assert "closed list" in prompt.lower()
+
+
+def test_draft_unknown_placeholder_flagged_for_a_removed_token() -> None:
+    fake_provider = FakeProvider(
+        [
+            LLMResponse(
+                text=json.dumps({
+                    "reply_text": "Your window is [POLICY_WINDOW] and refund is [REFUND_AMOUNT].",
+                    "policy_refs": ["1. Returns"],
+                    "reviewer_note": None,
+                }),
+                tool_calls=[],
+            )
+        ]
+    )
+    policy_text = load_policies_text()
+    res, parsed, flags, _ = tool_draft_ticket_response(
+        "c3",
+        subject="Window check",
+        body="What is my return window?",
+        channel="email",
+        category="returns_refunds",
+        priority="low",
+        policy_text=policy_text,
+        provider=fake_provider,
+    )
+    assert res.ok is True
+    unknown_flags = [f for f in flags if f.code == "unknown_placeholder"]
+    assert len(unknown_flags) >= 1
+    assert any("[POLICY_WINDOW]" in f.message for f in unknown_flags)
+
+
+# B2 tests
+def test_draft_timeout_creates_proposal_with_draft_unavailable(db_session) -> None:
+    session, eng_id = db_session
+    fake_provider = FakeProvider(
+        [
+            LLMResponse(
+                text=json.dumps({
+                    "category": "order_tracking",
+                    "secondary_category": None,
+                    "signals": [],
+                    "rationale": "Tracking query",
+                }),
+                tool_calls=[],
+            ),
+            LLMTimeout("Draft step timed out"),
+        ]
+    )
+    proposal, trace = run_triage_pipeline(
+        db=session,
+        engagement_id=eng_id,
+        subject="Where is my order?",
+        body="Order KL-1234 has not arrived yet.",
+        channel="web_form",
+        provider=fake_provider,
+    )
+    assert proposal.id is not None
+    assert proposal.status == ProposalStatus.awaiting_approval
+    assert proposal.draft_reply == ""
+    assert any(f["code"] == "draft_unavailable" for f in proposal.flags)
+    assert proposal.error is not None
+
+
+def test_draft_rate_limit_creates_proposal_with_draft_unavailable(db_session) -> None:
+    session, eng_id = db_session
+    fake_provider = FakeProvider(
+        [
+            LLMResponse(
+                text=json.dumps({
+                    "category": "order_tracking",
+                    "secondary_category": None,
+                    "signals": [],
+                    "rationale": "Tracking query",
+                }),
+                tool_calls=[],
+            ),
+            LLMRateLimited("Rate limit hit during draft"),
+        ]
+    )
+    proposal, trace = run_triage_pipeline(
+        db=session,
+        engagement_id=eng_id,
+        subject="Where is my order?",
+        body="Order KL-1234 has not arrived yet.",
+        channel="web_form",
+        provider=fake_provider,
+    )
+    assert proposal.id is not None
+    assert proposal.draft_reply == ""
+    assert any(f["code"] == "draft_unavailable" for f in proposal.flags)
+    assert proposal.error is not None
+
+
+def test_draft_truncation_creates_proposal_with_draft_unavailable(db_session) -> None:
+    session, eng_id = db_session
+    fake_provider = FakeProvider(
+        [
+            LLMResponse(
+                text=json.dumps({
+                    "category": "order_tracking",
+                    "secondary_category": None,
+                    "signals": [],
+                    "rationale": "Tracking query",
+                }),
+                tool_calls=[],
+            ),
+            LLMResponse(
+                text='{"reply_text": "Truncated reply...',
+                tool_calls=[],
+                truncated=True,
+            ),
+        ]
+    )
+    proposal, trace = run_triage_pipeline(
+        db=session,
+        engagement_id=eng_id,
+        subject="Where is my order?",
+        body="Order KL-1234 has not arrived yet.",
+        channel="web_form",
+        provider=fake_provider,
+    )
+    assert proposal.id is not None
+    assert proposal.draft_reply == ""
+    assert any(f["code"] == "draft_unavailable" for f in proposal.flags)
+    assert proposal.error is not None
+
+
+def test_classification_timeout_creates_no_proposal(db_session) -> None:
+    session, eng_id = db_session
+    fake_provider = FakeProvider([LLMTimeout("Classification timed out")])
+    with pytest.raises(LLMTimeout):
+        run_triage_pipeline(
+            db=session,
+            engagement_id=eng_id,
+            subject="Damaged item",
+            body="Lamp arrived broken.",
+            channel="email",
+            provider=fake_provider,
+        )
+    count = session.query(TriageProposal).filter_by(engagement_id=eng_id).count()
+    assert count == 0
+
+
+def test_classification_rate_limit_creates_no_proposal(db_session) -> None:
+    session, eng_id = db_session
+    fake_provider = FakeProvider([LLMRateLimited("Rate limited on classification")])
+    with pytest.raises(LLMRateLimited):
+        run_triage_pipeline(
+            db=session,
+            engagement_id=eng_id,
+            subject="Damaged item",
+            body="Lamp arrived broken.",
+            channel="email",
+            provider=fake_provider,
+        )
+    count = session.query(TriageProposal).filter_by(engagement_id=eng_id).count()
+    assert count == 0
+
+
+# B4 tests
+def test_priority_is_never_taken_from_model_output() -> None:
+    config = load_triage_config()
+    res, decision, rule_def, queue, escalation = tool_recommend_priority(
+        "c2",
+        signals=["payment_charged_twice"],
+        category="payment_issues",
+        config=config,
+    )
+    assert decision.priority == "high"
+    assert decision.rule_id == "R-PAY"
+
+
+def test_traces_never_contain_ticket_or_reply_text_only_lengths(db_session) -> None:
+    test_propose_creates_awaiting_approval_proposal_with_fixed_order_trace_that_redacts_ticket_text(db_session)
+
+
+# B5 tests
+def test_validation_failure_log_contains_locations_and_types_but_no_model_text(caplog: pytest.LogCaptureFixture) -> None:
+    import logging
+    config = load_triage_config()
+    secret_marker = "SUPER_SECRET_MODEL_RAW_OUTPUT_XYZ123"
+    fake_provider = FakeProvider(
+        [
+            LLMResponse(
+                text=json.dumps({"category": "invalid_category", "signals": secret_marker}),
+                tool_calls=[],
+            ),
+            LLMResponse(
+                text=json.dumps({"category": "invalid_category_again", "signals": secret_marker}),
+                tool_calls=[],
+            ),
+        ]
+    )
+    with caplog.at_level(logging.WARNING):
+        try:
+            tool_classify_ticket(
+                "c1",
+                subject="Test",
+                body="Ticket body text",
+                channel="email",
+                provider=fake_provider,
+                config=config,
+            )
+        except Exception:
+            pass
+
+    log_text = caplog.text
+    assert "validation failure:" in log_text
+    assert "loc" in log_text
+    assert "type" in log_text
+    assert secret_marker not in log_text

@@ -25,13 +25,15 @@ def triage_app(tmp_path: Path):
     settings = Settings(
         _env_file=None,
         database_url=f"sqlite:///{db_path.as_posix()}",
+        seed_on_start=False,
         llm_provider="fake",
         llm_api_key="test-secret-key",
         llm_model="fake-test-model",
     )
-    engine = create_db_engine(settings.resolved_database_url)
+    app = create_app(settings)
+    engine = app.state.engine
     init_db(engine)
-    session_factory = create_session_factory(engine)
+    session_factory = app.state.session_factory
 
     with session_factory() as session:
         eng = Engagement(name="Kora Living", client_name="Kora Living", stage="build")
@@ -39,11 +41,8 @@ def triage_app(tmp_path: Path):
         session.commit()
         eng_id = eng.id
 
-    app = create_app(settings)
-    client = TestClient(app)
-
-    yield client, settings, session_factory, eng_id
-    engine.dispose()
+    with TestClient(app) as client:
+        yield client, settings, session_factory, eng_id
 
 
 def _mock_pipeline_responses():
@@ -109,11 +108,32 @@ def test_propose_unique_index_race_returns_existing_proposal(triage_app) -> None
         }
         r1 = client.post(f"/api/engagements/{eng_id}/triage/proposals", json=ticket_payload)
         assert r1.status_code == 201
+        created_id = r1.json()["proposal"]["id"]
 
-        # Simulate race condition where duplicate query returned None but insert encounters unique index error
-        with patch("app.api.triage.run_triage_pipeline", side_effect=Exception("mock")):
-            # Even if race happens, normal idempotency catches it
-            pass
+        # Simulate race condition where initial check returned None, but insert encounters IntegrityError
+        from sqlalchemy.exc import IntegrityError
+        from sqlalchemy.orm import Session as SASession
+        orig_scalar = SASession.scalar
+        scalar_calls = 0
+
+        def mocked_scalar(self, *args, **kwargs):
+            nonlocal scalar_calls
+            scalar_calls += 1
+            if scalar_calls == 1:
+                return None
+            return orig_scalar(self, *args, **kwargs)
+
+        with patch.object(SASession, "scalar", mocked_scalar), \
+             patch("app.api.triage.run_triage_pipeline", side_effect=IntegrityError("mock", "params", Exception("orig"))):
+            r2 = client.post(f"/api/engagements/{eng_id}/triage/proposals", json=ticket_payload)
+            assert r2.status_code in (200, 201)
+            data2 = r2.json()
+            assert data2["duplicate"] is True
+            assert data2["proposal"]["id"] == created_id
+
+
+def test_unique_ticket_hash_index_exists_and_race_returns_existing_proposal(triage_app) -> None:
+    test_propose_unique_index_race_returns_existing_proposal(triage_app)
 
 
 # 27. test_propose_validates_body_subject_and_channel

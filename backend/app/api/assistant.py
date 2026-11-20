@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 from datetime import datetime
@@ -34,6 +35,8 @@ router = APIRouter(
     prefix="/api/engagements/{engagement_id}/assistant/runs",
     tags=["assistant"],
 )
+
+logger = logging.getLogger(__name__)
 
 ProviderFactory = Callable[[Settings], LLMProvider]
 

@@ -579,4 +579,64 @@ describe("Support Triage Prototype Frontend Components", () => {
 
     vi.restoreAllMocks();
   });
+
+  // 27. test_draft_unavailable_proposal_allows_manual_reply_and_blocks_empty_approval
+  it("test_draft_unavailable_proposal_allows_manual_reply_and_blocks_empty_approval", async () => {
+    const draftUnavailableProposal: TriageProposalResponse = {
+      ...MOCK_PROPOSAL,
+      id: 99,
+      draft_reply: "",
+      flags: [
+        {
+          code: "draft_unavailable",
+          message: "The draft reply could not be generated.",
+          where: "draft_reply",
+        },
+      ],
+      status: "awaiting_approval",
+    };
+
+    render(
+      <ProposalDetail
+        proposal={draftUnavailableProposal}
+        onProposalUpdated={vi.fn()}
+        history={[]}
+      />
+    );
+
+    // Displays the plain-language message
+    expect(
+      screen.getAllByText(/The draft reply could not be generated. Write a reply to approve this proposal./i).length
+    ).toBeGreaterThanOrEqual(1);
+
+    // Approve button is disabled because reply is empty
+    const approveBtn = screen.getByRole("button", { name: /Approve proposal/i });
+    expect(approveBtn).toBeDisabled();
+
+    // The reply editor textarea is available and empty
+    const textarea = screen.getByPlaceholderText(/Enter or edit customer reply draft.../i);
+    expect(textarea).toBeInTheDocument();
+    expect(textarea).toHaveValue("");
+
+    // Typing a manual reply enables approval
+    await userEvent.type(textarea, "Manual operator reply for customer.");
+    expect(approveBtn).not.toBeDisabled();
+  });
+
+  // 28. test_unresolved_placeholder_detection_uses_the_closed_list
+  it("test_unresolved_placeholder_detection_uses_the_closed_list", () => {
+    render(
+      <ReplyEditor
+        reply="Your refund of [REFUND_AMOUNT] has been processed. Reference [UNKNOWN_TOKEN] for details."
+      />
+    );
+
+    // [REFUND_AMOUNT] from closed list is recognized as unresolved placeholder
+    expect(screen.getByText("[REFUND_AMOUNT]")).toBeInTheDocument();
+    expect(screen.getByText(/1 unresolved placeholder detected:/i)).toBeInTheDocument();
+
+    // [UNKNOWN_TOKEN] is reported as unknown
+    expect(screen.getByText("[UNKNOWN_TOKEN] (unknown)")).toBeInTheDocument();
+    expect(screen.getByText(/1 unknown placeholder detected:/i)).toBeInTheDocument();
+  });
 });

@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.triage.prompts import ALLOWED_PLACEHOLDERS
+
 AllowedChannel = Literal["email", "chat", "web_form", "whatsapp"]
 PriorityLevel = Literal["low", "medium", "high"]
 ProposalDecision = Literal["approve", "reject"]
@@ -117,6 +119,7 @@ class TriageProposalResponse(BaseModel):
     edited: bool = False
     created_at: datetime
     decided_at: datetime | None = None
+    allowed_placeholders: list[str] = Field(default_factory=lambda: list(ALLOWED_PLACEHOLDERS))
 
     @classmethod
     def from_orm_model(cls, p: Any) -> TriageProposalResponse:

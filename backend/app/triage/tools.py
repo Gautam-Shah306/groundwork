@@ -15,7 +15,7 @@ import re
 import time
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.agent.tools import ToolError, ToolResult
@@ -64,6 +64,12 @@ def _strip_code_fences(text: str) -> str:
     return cleaned
 
 
+def _log_validation_error(stage: str, exc: ValidationError) -> None:
+    """Log Pydantic error locations and types to server log only, NEVER values or model text."""
+    err_summary = [{"loc": list(err.get("loc", ())), "type": err.get("type", "")} for err in exc.errors()]
+    logger.warning("%s validation failure: %s", stage, err_summary)
+
+
 def tool_classify_ticket(
     call_id: str,
     *,
@@ -104,7 +110,9 @@ def tool_classify_ticket(
         try:
             data = json.loads(raw_text)
             parsed = ClassificationOutput.model_validate(data)
-        except Exception:
+        except Exception as exc:
+            if isinstance(exc, ValidationError):
+                _log_validation_error("Classification", exc)
             # One repair attempt
             logger.info("Classification output invalid JSON; attempting single repair")
             repair_messages = list(messages) + [
@@ -121,8 +129,12 @@ def tool_classify_ticket(
             if repair_resp.truncated:
                 raise LLMOutputTruncated("Classification repair output truncated.")
             repaired_text = _strip_code_fences(repair_resp.text)
-            repaired_data = json.loads(repaired_text)
-            parsed = ClassificationOutput.model_validate(repaired_data)
+            try:
+                repaired_data = json.loads(repaired_text)
+                parsed = ClassificationOutput.model_validate(repaired_data)
+            except ValidationError as val_exc:
+                _log_validation_error("Classification repair", val_exc)
+                raise
 
         # Post-processing flags on classification
         flags: list[ReviewFlag] = []
@@ -358,7 +370,9 @@ def tool_draft_ticket_response(
         try:
             data = json.loads(raw_text)
             parsed = DraftOutput.model_validate(data)
-        except Exception:
+        except Exception as exc:
+            if isinstance(exc, ValidationError):
+                _log_validation_error("Draft", exc)
             # One repair attempt
             logger.info("Draft output invalid JSON; attempting single repair")
             repair_messages = list(messages) + [
@@ -375,8 +389,12 @@ def tool_draft_ticket_response(
             if repair_resp.truncated:
                 raise LLMOutputTruncated("Drafting repair response truncated.")
             repaired_text = _strip_code_fences(repair_resp.text)
-            repaired_data = json.loads(repaired_text)
-            parsed = DraftOutput.model_validate(repaired_data)
+            try:
+                repaired_data = json.loads(repaired_text)
+                parsed = DraftOutput.model_validate(repaired_data)
+            except ValidationError as val_exc:
+                _log_validation_error("Draft repair", val_exc)
+                raise
 
         # Post-processing flags on draft reply
         flags: list[ReviewFlag] = []
@@ -498,8 +516,6 @@ def tool_draft_ticket_response(
         }
         return result, parsed, flags, usage
 
-    except (LLMOutputTruncated, LLMTimeout, LLMRateLimited):
-        raise
     except Exception as exc:
         dur_ms = int(round((time.time() - t0) * 1000))
         err_msg = str(exc)

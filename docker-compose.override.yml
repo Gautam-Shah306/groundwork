@@ -1,0 +1,5 @@
+# Development-only convenience: mount host backend app source code into container for fast iteration
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app:ro

@@ -247,10 +247,18 @@ export function ProposalDetail({
         )}
 
         {/* Draft Response Area */}
-        <ReplyEditor
-          reply={proposal.draft_reply}
-          readOnly={true}
-        />
+        {proposal.flags?.some((f) => f.code === "draft_unavailable") ? (
+          <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
+            <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>The draft reply could not be generated. Write a reply to approve this proposal.</span>
+          </div>
+        ) : (
+          <ReplyEditor
+            reply={proposal.draft_reply}
+            readOnly={true}
+            allowedPlaceholders={proposal.allowed_placeholders}
+          />
+        )}
 
         {/* Decision Controls */}
         <DecisionControls

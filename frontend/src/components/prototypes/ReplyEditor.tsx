@@ -1,19 +1,36 @@
 import { useMemo } from "react";
 import { AlertTriangle } from "lucide-react";
+import { ALLOWED_PLACEHOLDERS } from "../../lib/api";
 
 export interface ReplyEditorProps {
   reply: string;
   onChange?: (newReply: string) => void;
   readOnly?: boolean;
+  allowedPlaceholders?: readonly string[];
 }
 
 const PLACEHOLDER_REGEX = /\[[A-Za-z0-9_]+\]/g;
 
-export function ReplyEditor({ reply, onChange, readOnly = false }: ReplyEditorProps) {
-  const placeholders = useMemo(() => {
+export function ReplyEditor({
+  reply,
+  onChange,
+  readOnly = false,
+  allowedPlaceholders = ALLOWED_PLACEHOLDERS,
+}: ReplyEditorProps) {
+  const { validPlaceholders, unknownPlaceholders } = useMemo(() => {
     const matches = reply.match(PLACEHOLDER_REGEX);
-    return matches ? Array.from(new Set(matches)) : [];
-  }, [reply]);
+    const unique = matches ? Array.from(new Set(matches)) : [];
+    const valid: string[] = [];
+    const unknown: string[] = [];
+    for (const token of unique) {
+      if ((allowedPlaceholders as readonly string[]).includes(token)) {
+        valid.push(token);
+      } else {
+        unknown.push(token);
+      }
+    }
+    return { validPlaceholders: valid, unknownPlaceholders: unknown };
+  }, [reply, allowedPlaceholders]);
 
   const charCount = reply.length;
   const isOverLimit = charCount > 2000;
@@ -47,15 +64,15 @@ export function ReplyEditor({ reply, onChange, readOnly = false }: ReplyEditorPr
         } ${isOverLimit ? "border-rose-400 ring-rose-400" : ""}`}
       />
 
-      {placeholders.length > 0 && (
+      {validPlaceholders.length > 0 && (
         <div className="rounded border border-amber-200 bg-amber-50/70 p-2 text-xs text-amber-800 flex items-start gap-2">
           <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="space-y-1">
             <span className="font-semibold block">
-              {placeholders.length} unresolved placeholder{placeholders.length > 1 ? "s" : ""} detected:
+              {validPlaceholders.length} unresolved placeholder{validPlaceholders.length > 1 ? "s" : ""} detected:
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {placeholders.map((ph) => (
+              {validPlaceholders.map((ph) => (
                 <span
                   key={ph}
                   className="font-mono text-[11px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded border border-amber-300 font-medium"
@@ -66,6 +83,30 @@ export function ReplyEditor({ reply, onChange, readOnly = false }: ReplyEditorPr
             </div>
             <p className="text-[11px] text-amber-700 mt-1">
               Replace placeholders with concrete details before sending. (Remember: Groundwork never sends messages directly).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {unknownPlaceholders.length > 0 && (
+        <div className="rounded border border-rose-200 bg-rose-50/70 p-2 text-xs text-rose-800 flex items-start gap-2">
+          <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="space-y-1">
+            <span className="font-semibold block">
+              {unknownPlaceholders.length} unknown placeholder{unknownPlaceholders.length > 1 ? "s" : ""} detected:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {unknownPlaceholders.map((ph) => (
+                <span
+                  key={ph}
+                  className="font-mono text-[11px] bg-rose-100 text-rose-900 px-1.5 py-0.5 rounded border border-rose-300 font-medium"
+                >
+                  {ph} (unknown)
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-rose-700 mt-1">
+              Bracketed token is not in the approved placeholder list. Please verify against company policies.
             </p>
           </div>
         </div>

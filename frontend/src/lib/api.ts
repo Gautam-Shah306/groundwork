@@ -1079,6 +1079,15 @@ export interface PipelineTraceStep {
   duration_ms: number;
 }
 
+export const ALLOWED_PLACEHOLDERS: readonly string[] = [
+  "[CUSTOMER_NAME]",
+  "[ORDER_ID]",
+  "[TRACKING_STATUS]",
+  "[REFUND_AMOUNT]",
+  "[DELIVERY_DATE]",
+  "[AGENT_NAME]",
+] as const;
+
 export interface ProposalFinalValues {
   category: string;
   priority: PriorityLevel;
@@ -1118,6 +1127,7 @@ export interface TriageProposalResponse {
   edited: boolean;
   created_at: string;
   decided_at?: string | null;
+  allowed_placeholders?: string[];
 }
 
 export interface CreateProposalPayload {

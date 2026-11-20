@@ -46,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     if settings is not None:
         application.state.settings = settings
+        application.dependency_overrides[get_settings] = lambda: settings
     application.state.engine = engine
     application.state.session_factory = session_factory
     application.state.assistant_threads = []
